@@ -9,5 +9,5 @@ void lcd_refresh();
 
 void lcd_clear();
 
-void lcd_draw_sprite(byte *sprite, int8_t x0, int8_t y0);
-void lcd_draw_bg(byte *bg, int8_t x0, int8_t y0);
+void lcd_draw_sprite(const byte *sprite, int8_t x0, int8_t y0);
+void lcd_draw_bg(const byte *bg, int8_t x0, int8_t y0);

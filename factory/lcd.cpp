@@ -138,7 +138,7 @@ static const uint8_t ASCII[][5] =
 };
 */
 
-void lcd_draw_bg(uint8_t *bg, int8_t x0, int8_t y0) {
+void lcd_draw_bg(const uint8_t *bg, int8_t x0, int8_t y0) {
   for (int8_t dy = 0; dy < 8; dy++) {
     int8_t y = y0 + dy;
     if (y < 0 || y >= LCD_HEIGHT) continue;
@@ -160,7 +160,7 @@ void lcd_draw_bg(uint8_t *bg, int8_t x0, int8_t y0) {
   }
 }
 
-void lcd_draw_sprite(uint8_t *sprite, int8_t x0, int8_t y0) {
+void lcd_draw_sprite(const uint8_t *sprite, int8_t x0, int8_t y0) {
   for (int8_t dy = 0; dy < 8; dy++) {
     int8_t y = y0 + dy;
     if (y < 0 || y >= LCD_HEIGHT) continue;

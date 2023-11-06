@@ -25,33 +25,34 @@ class ImgData:
 
     def get_header(self):
         lines = ['#include <stdint.h>']
+        lines = ['#include <avr/pgmspace.h>']
         for bg_name in sorted(self.bgs):
             bgs = self.bgs[bg_name]
-            lines.append(f'extern uint8_t bg_tile_{bg_name}[{len(bgs)}][8];')
+            lines.append(f'PROGMEM extern const uint8_t bg_tile_{bg_name}[{len(bgs)}][8];')
 
         for sprite_name in sorted(self.sprites):
             sprites = self.sprites[sprite_name]
-            lines.append(f'extern uint8_t sprite_{sprite_name}[{len(sprites)}][16];')
+            lines.append(f'PROGMEM extern const uint8_t sprite_{sprite_name}[{len(sprites)}][16];')
 
-        return '\n'.join(lines)
+        return '\n'.join(lines) + '\n'
 
     def get_cpp(self):
         lines = ['#include "generated_graphics.h"']
         for bg_name in sorted(self.bgs):
             bgs = self.bgs[bg_name]
-            lines.append(f'uint8_t bg_tile_{bg_name}[{len(bgs)}][8] = ' + '{')
+            lines.append(f'PROGMEM const uint8_t bg_tile_{bg_name}[{len(bgs)}][8] = ' + '{')
             for bg in bgs:
                 lines.append('  {' + ', '.join(byte_to_hex(row) for row in bg) + '},')
             lines.append('};')
 
         for sprite_name in sorted(self.sprites):
             sprites = self.sprites[sprite_name]
-            lines.append(f'uint8_t sprite_{sprite_name}[{len(sprites)}][16] = ' + '{')
+            lines.append(f'PROGMEM const uint8_t sprite_{sprite_name}[{len(sprites)}][16] = ' + '{')
             for sprite in sprites:
                 lines.append('  {' + ', '.join(byte_to_hex(row) for row in sprite) + '},')
             lines.append('};')
 
-        return '\n'.join(lines)
+        return '\n'.join(lines) + '\n'
 
     def _get_patterns(self, img, predicate):
         assert img.width % 8 == 0
