@@ -7,4 +7,5 @@
 #define INPUT_A 16
 #define INPUT_B 32
 
-uint8_t read_input();
+void input_init();
+uint8_t input_read();

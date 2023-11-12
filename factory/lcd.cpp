@@ -1,7 +1,7 @@
 #include "lcd.h"
 
-#define PIN_SCE   7
-#define PIN_RESET 6
+#define PIN_RESET 7
+#define PIN_SCE   6
 #define PIN_DC    5
 #define PIN_SDIN  4
 #define PIN_SCLK  3
@@ -36,8 +36,7 @@ uint8_t screen[LCD_WIDTH * LCD_HEIGHT / 8] = {
   0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,  
 };
 
-/*
-static const uint8_t ASCII[][5] =
+PROGMEM static const uint8_t ASCII[][5] =
 {
  {0x00, 0x00, 0x00, 0x00, 0x00} // 20  
 ,{0x00, 0x00, 0x5f, 0x00, 0x00} // 21 !
@@ -136,10 +135,9 @@ static const uint8_t ASCII[][5] =
 ,{0x10, 0x08, 0x08, 0x10, 0x08} // 7e ←
 ,{0x78, 0x46, 0x41, 0x46, 0x78} // 7f →
 };
-*/
 
 void lcd_draw_bg(const uint8_t *bg, int8_t x0, int8_t y0) {
-  for (int8_t dy = 0; dy < 8; dy++) {
+  for (int8_t dy = 0; dy < 7; dy++) {
     int8_t y = y0 + dy;
     if (y < 0 || y >= LCD_HEIGHT) continue;
 
@@ -205,25 +203,26 @@ void LcdWrite(uint8_t dc, uint8_t data)
   digitalWrite(PIN_SCE, HIGH);
 }
 
-/*
-void LcdCharacter(char character)
-{
-  LcdWrite(LCD_D, 0x00);
-  for (int index = 0; index < 5; index++)
-  {
-    LcdWrite(LCD_D, ASCII[character - 0x20][index]);
-  }
-  LcdWrite(LCD_D, 0x00);
-}
+void lcd_string(const char *message, int8_t row, int8_t x) {
+  int16_t screen_index = row * (int16_t)84 + x;
 
-void LcdString(char *characters)
-{
-  while (*characters)
-  {
-    LcdCharacter(*characters++);
+  while (*message) {
+    // TODO : better kerning? Wrap?
+    uint8_t ascii_index = *message - 0x20;
+    int pixel_index = 0;
+    while (pixel_index < 3 && ASCII[ascii_index][pixel_index] == 0) {
+      pixel_index++;
+    }
+
+    for (; pixel_index < 5; pixel_index++)
+    {
+      screen[screen_index++] = ASCII[ascii_index][pixel_index];
+    }
+    screen[screen_index++] = 0;
+
+    message++;
   }
 }
-*/
 
 void LcdClear(void)
 {

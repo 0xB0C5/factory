@@ -10,16 +10,16 @@ class ImgData:
 
     def add_sprites(self, name, img):
         # mask = green > red
-        masks = self._get_patterns(img, lambda color: color[1] > color[0])
+        masks = self._get_patterns(img, 8, lambda color: color[1] > color[0])
         # pattern = red < 128
-        patterns = self._get_patterns(img, lambda color: color[0] < 128)
+        patterns = self._get_patterns(img, 8, lambda color: color[0] < 128)
 
         sprites = [mask + pat for mask, pat in zip(masks, patterns)]
 
         self.sprites[name] = sprites
 
     def add_backgrounds(self, name, img):
-        bgs = self._get_patterns(img, lambda color: color[0] < 128)
+        bgs = self._get_patterns(img, 7, lambda color: color[0] < 128)
 
         self.bgs[name] = bgs
 
@@ -28,11 +28,11 @@ class ImgData:
         lines = ['#include <avr/pgmspace.h>']
         for bg_name in sorted(self.bgs):
             bgs = self.bgs[bg_name]
-            lines.append(f'PROGMEM extern const uint8_t bg_tile_{bg_name}[{len(bgs)}][8];')
+            lines.append(f'extern const uint8_t bg_tile_{bg_name}[{len(bgs)}][7];')
 
         for sprite_name in sorted(self.sprites):
             sprites = self.sprites[sprite_name]
-            lines.append(f'PROGMEM extern const uint8_t sprite_{sprite_name}[{len(sprites)}][16];')
+            lines.append(f'extern const uint8_t sprite_{sprite_name}[{len(sprites)}][16];')
 
         return '\n'.join(lines) + '\n'
 
@@ -40,31 +40,31 @@ class ImgData:
         lines = ['#include "generated_graphics.h"']
         for bg_name in sorted(self.bgs):
             bgs = self.bgs[bg_name]
-            lines.append(f'PROGMEM const uint8_t bg_tile_{bg_name}[{len(bgs)}][8] = ' + '{')
+            lines.append(f'const uint8_t bg_tile_{bg_name}[{len(bgs)}][7] = ' + '{')
             for bg in bgs:
                 lines.append('  {' + ', '.join(byte_to_hex(row) for row in bg) + '},')
             lines.append('};')
 
         for sprite_name in sorted(self.sprites):
             sprites = self.sprites[sprite_name]
-            lines.append(f'PROGMEM const uint8_t sprite_{sprite_name}[{len(sprites)}][16] = ' + '{')
+            lines.append(f'const uint8_t sprite_{sprite_name}[{len(sprites)}][16] = ' + '{')
             for sprite in sprites:
                 lines.append('  {' + ', '.join(byte_to_hex(row) for row in sprite) + '},')
             lines.append('};')
 
         return '\n'.join(lines) + '\n'
 
-    def _get_patterns(self, img, predicate):
+    def _get_patterns(self, img, stride_y, predicate):
         assert img.width % 8 == 0
-        assert img.height % 8 == 0
+        assert img.height % stride_y == 0
 
         patterns = []
 
-        for y0 in range(0, img.height, 8):
+        for y0 in range(0, img.height, stride_y):
             for x0 in range(0, img.width, 8):
                 pattern = []
-                
-                for y in range(y0, y0+8):
+
+                for y in range(y0, y0+stride_y):
                     row = 0
                     for x in range(x0, x0+8):
                         row <<= 1
@@ -91,11 +91,13 @@ def main():
 
     for filename in os.listdir(sprites_dir):
         sprite_path = sprites_dir / filename
+        print(sprite_path)
         img = Image.open(sprite_path)
         img_data.add_sprites(filename.split('.')[0], img)
 
     for filename in os.listdir(bgs_dir):
         bg_path = bgs_dir / filename
+        print(bg_path)
         img = Image.open(bg_path)
         img_data.add_backgrounds(filename.split('.')[0], img)
 
