@@ -7,7 +7,52 @@
 #define CAMERA_MAX_X (8*LEVEL_WIDTH_CELLS-LCD_WIDTH)
 #define CAMERA_MAX_Y (7*LEVEL_HEIGHT_CELLS-LCD_HEIGHT)
 
-void render() {
+
+void render_item(uint8_t id, int8_t x, int8_t y) {
+  const uint8_t *sprite;
+  switch (id) {
+    case ITEM_ROCK:
+      sprite = sprite_rock[0];
+      break;
+    case ITEM_COAL:
+      sprite = sprite_coal[0];
+      break;
+    case ITEM_IRON:
+      sprite = sprite_iron_ore[0];
+      break;
+    case ITEM_COPPER:
+      sprite = sprite_copper_ore[0];
+      break;
+
+    default:
+      // Don't render.
+      return;
+  }
+
+  lcd_draw_sprite(sprite, x, y);
+}
+
+void render_count(uint8_t count, int8_t x, int8_t y) {
+  if (count >= 10) lcd_draw_digit(count / 10, x, y);
+  lcd_draw_digit(count % 10, x + 4, y);
+}
+
+void render_menu() {
+  lcd_clear();
+  
+  for (int i = 0; i < PLAYER_INVENTORY_SIZE; i++) {
+    inventory_item_t item = game.player.inventory[i];
+
+    uint8_t x = 3 + (i % 8) * 10;
+    uint8_t y = (i / 8) * 16;
+
+    render_item(item.id, x, y);
+    render_count(item.count, x+1, y+9);
+  }
+}
+
+
+void render_level() {
   int16_t player_pixel_x = 8*game.player.x + (2 * ui.player_subcell.x);
   int16_t player_pixel_y = 7*game.player.y + (7 * ui.player_subcell.y / 4);
 
@@ -31,19 +76,19 @@ void render() {
       cell_t cell = game.level[cell_y][cell_x];
       const uint8_t *bg;
       switch(cell.id) {
-        case RESOURCE_NONE:
+        case ITEM_NONE:
           bg = bg_cell_grass[((cell_y & 3) << 2) | (cell_x & 3)];
           break;
-        case RESOURCE_ROCK:
+        case ITEM_ROCK:
           bg = bg_cell_rock[((cell_y & 3) << 2) | (cell_x & 3)];
           break;
-        case RESOURCE_COAL:
+        case ITEM_COAL:
           bg = bg_cell_coal[((cell_y & 3) << 2) | (cell_x & 3)];
           break;
-        case RESOURCE_IRON:
+        case ITEM_IRON:
           bg = bg_cell_iron_ore[((cell_y & 3) << 2) | (cell_x & 3)];
           break;
-        case RESOURCE_COPPER:
+        case ITEM_COPPER:
           bg = bg_cell_copper_ore[((cell_y & 3) << 2) | (cell_x & 3)];
           break;
         default:
@@ -69,6 +114,17 @@ void render() {
   if (ui.action_progress) {
     lcd_draw_sprite(sprite_progress[ui.action_progress-1], player_pixel_x + 8*ui.player_facing.x - camera_x, player_pixel_y + 8*ui.player_facing.y - camera_y);
   }
+}
 
+void render() {
+  switch (ui.state) {
+    case UI_STATE_LEVEL:
+      render_level();
+      break;
+    case UI_STATE_MENU:
+      render_menu();
+      break;
+  }
+  
   lcd_refresh();
 }

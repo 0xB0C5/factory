@@ -21,10 +21,11 @@ void setup(void)
 
   level_init();
   level_generate(1234);
+  ui_reset();
 
-  // TODO : REMOVE?
+  // TODO : ???
   // This shows the logo.
-  delay(4000);
+  // delay(4000);
 
   frame_time = millis();
 }

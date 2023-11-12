@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 
-#define UI_STATE_GAMEPLAY 0
+#define UI_STATE_LEVEL 0
 #define UI_STATE_MENU 1
 
 typedef struct {

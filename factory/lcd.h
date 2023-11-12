@@ -11,4 +11,5 @@ void lcd_clear();
 
 void lcd_draw_sprite(const byte *sprite, int8_t x0, int8_t y0);
 void lcd_draw_bg(const byte *bg, int8_t x0, int8_t y0);
+void lcd_draw_digit(int8_t d, int8_t x0, int8_t y0);
 void lcd_string(const char *message, int8_t row, int8_t x);

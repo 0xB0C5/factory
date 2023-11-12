@@ -45,8 +45,8 @@ bool level_save() {
   return (written == sizeof(game));
 }
 
-static const int resource_patch_counts[] = {40, 40, 30, 20};
-static const int resource_patch_ids[]    = {RESOURCE_COAL, RESOURCE_ROCK, RESOURCE_IRON, RESOURCE_COPPER};
+static const int resource_patch_counts[] = {999,        999,        999,        999};
+static const int resource_patch_ids[]    = {ITEM_COAL, ITEM_ROCK, ITEM_IRON, ITEM_COPPER};
 
 void level_generate(uint32_t seed) {
   memset(&game, 0, sizeof(game));
@@ -80,4 +80,7 @@ void level_generate(uint32_t seed) {
       }
     }
   }
+
+  game.player.x = LEVEL_WIDTH_CELLS/2;
+  game.player.y = LEVEL_HEIGHT_CELLS/2;
 }

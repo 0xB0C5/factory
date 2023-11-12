@@ -183,6 +183,99 @@ void lcd_draw_sprite(const uint8_t *sprite, int8_t x0, int8_t y0) {
   }
 }
 
+uint8_t lcd_digits[10][5] = {
+  {
+    0b111,
+    0b101,
+    0b101,
+    0b101,
+    0b111,
+  },
+  {
+    0b010,
+    0b110,
+    0b010,
+    0b010,
+    0b111,
+  },
+  {
+    0b111,
+    0b001,
+    0b111,
+    0b100,
+    0b111,
+  },
+  {
+    0b111,
+    0b001,
+    0b011,
+    0b001,
+    0b111,
+  },
+  {
+    0b101,
+    0b101,
+    0b111,
+    0b001,
+    0b001,
+  },
+  {
+    0b111,
+    0b100,
+    0b111,
+    0b001,
+    0b111,
+  },
+  {
+    0b111,
+    0b100,
+    0b111,
+    0b101,
+    0b111,
+  },
+  {
+    0b111,
+    0b001,
+    0b001,
+    0b001,
+    0b001,
+  },
+  {
+    0b111,
+    0b101,
+    0b111,
+    0b101,
+    0b111,
+  },
+  {
+    0b111,
+    0b101,
+    0b111,
+    0b001,
+    0b111,
+  },
+};
+
+void lcd_draw_digit(int8_t d, int8_t x0, int8_t y0) {
+  for (int8_t dy = 0; dy < 5; dy++) {
+    int8_t y = y0 + dy;
+    if (y < 0 || y >= LCD_HEIGHT) continue;
+
+    int screen_index = (y >> 3) * 84;
+    uint8_t screen_mask = 1 << (y & 0b111);
+    uint8_t digit_graphics = lcd_digits[d][dy];
+
+    for (int8_t dx = 0; dx < 3; dx++) {
+      int8_t x = x0 + dx;
+      if (x < 0 || x >= LCD_WIDTH) continue;
+
+      if ((digit_graphics << dx) & 0b100) {
+        screen[screen_index+x] |= screen_mask;
+      }
+    }
+  }
+}
+
 void shiftOutSlow(uint8_t dataPin, uint8_t clockPin, uint8_t val)
 {
   uint8_t i;

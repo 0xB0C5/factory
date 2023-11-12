@@ -7,13 +7,13 @@
 #define LEVEL_HEIGHT_CELLS 384
 #define PLAYER_INVENTORY_SIZE 16
 
-#define RESOURCE_NONE 0
-#define RESOURCE_ROCK 1
-#define RESOURCE_COAL 2
-#define RESOURCE_IRON 3
-#define RESOURCE_COPPER 4
-#define RESOURCE_WATER 5
-#define RESOURCE_INVALID 6
+#define ITEM_NONE 0
+#define ITEM_ROCK 1
+#define ITEM_COAL 2
+#define ITEM_IRON 3
+#define ITEM_COPPER 4
+#define ITEM_WATER 5
+#define ITEM_INVALID 6
 
 typedef struct {
   uint8_t id : 6;
