@@ -28,7 +28,7 @@ class ImgData:
         lines = ['#include <avr/pgmspace.h>']
         for bg_name in sorted(self.bgs):
             bgs = self.bgs[bg_name]
-            lines.append(f'extern const uint8_t bg_tile_{bg_name}[{len(bgs)}][7];')
+            lines.append(f'extern const uint8_t bg_cell_{bg_name}[{len(bgs)}][7];')
 
         for sprite_name in sorted(self.sprites):
             sprites = self.sprites[sprite_name]
@@ -40,7 +40,7 @@ class ImgData:
         lines = ['#include "generated_graphics.h"']
         for bg_name in sorted(self.bgs):
             bgs = self.bgs[bg_name]
-            lines.append(f'const uint8_t bg_tile_{bg_name}[{len(bgs)}][7] = ' + '{')
+            lines.append(f'const uint8_t bg_cell_{bg_name}[{len(bgs)}][7] = ' + '{')
             for bg in bgs:
                 lines.append('  {' + ', '.join(byte_to_hex(row) for row in bg) + '},')
             lines.append('};')

@@ -1,6 +1,9 @@
 from PIL import Image
+from pathlib import Path
 
-img = Image.open('factory.png')
+root_dir = Path(__file__).parent.parent
+
+img = Image.open(root_dir / 'img' / 'factory.png')
 
 data = []
 
@@ -8,7 +11,7 @@ for y0 in range(0, img.height, 8):
     for x in range(img.width):
         d = 0
         for i in range(8):
-            r, g, b = img.getpixel((x, y0+i))
+            r = img.getpixel((x, y0+i))[0]
             if r < 128:
                 d |= 1 << i
         data.append(d)
