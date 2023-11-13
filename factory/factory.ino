@@ -20,7 +20,9 @@ void setup(void)
   input_init();
 
   level_init();
-  level_generate(1234);
+  if (!level_load()) {
+    level_generate(1234);
+  }
   ui_reset();
 
   // TODO : ???
@@ -32,6 +34,7 @@ void setup(void)
 
 void loop(void)
 {
+  level_update(ui.level_subtick);
   ui_update();
   render();
 

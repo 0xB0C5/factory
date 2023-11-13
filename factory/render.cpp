@@ -79,8 +79,12 @@ void render_item(uint8_t id, int8_t x, int8_t y) {
 }
 
 void render_count(uint8_t count, int8_t x, int8_t y) {
-  if (count >= 10) lcd_draw_digit(count / 10, x, y);
-  lcd_draw_digit(count % 10, x + 4, y);
+  if (count >= 10) {
+    lcd_draw_digit(count / 10, x, y);
+    lcd_draw_digit(count % 10, x + 4, y);
+  } else {
+    lcd_draw_digit(count, x, y);
+  }
 }
 
 void render_cursor(int8_t x, int8_t y) {
@@ -122,14 +126,54 @@ void render_menu() {
         uint8_t y = 7 + (i / 8) * 16;
 
         if (item.id != ITEM_NONE) {
-          render_item(item.id, x, y);
           render_count(item.count, x+1, y+9);
+        }
+
+        if (!ui.inventory_swapping || (i != ui.inventory_selected && i != ui.inventory_cursor) || (ui.frame_counter & 0b100)) {
+          if (item.id != ITEM_NONE) {
+            render_item(item.id, x, y);
+          } else {
+            lcd_draw_sprite(sprite_slot_empty[0], x, y);
+          }
         }
 
         if (ui.menu_tab_selected && i == ui.inventory_cursor) {
           render_cursor(x, y);
         }
       }
+
+      {
+        machine_inventory_t machine_inventory;
+        if (load_machine_inventory(&machine_inventory, game.player.x + ui.player_facing.x, game.player.y + ui.player_facing.y)) {
+          // Show the machine's inventory.
+          render_item(machine_inventory.item_id, 3, 40);
+
+          for (int i = 0; i < machine_inventory.slot_count; i++) {
+            uint8_t x = 16 + 16*i;
+            uint8_t y = 40;
+
+            inventory_item_t item = machine_inventory.items[i];
+
+            if (item.id != ITEM_NONE) {
+              render_count(item.count, x+9, y+3);
+            }
+
+            int cursor_i = i+PLAYER_INVENTORY_SIZE;
+            if (!ui.inventory_swapping || (cursor_i != ui.inventory_selected && cursor_i != ui.inventory_cursor) || (ui.frame_counter & 0b100)) {
+              if (item.id != ITEM_NONE) {
+                render_item(item.id, x, y);
+              } else {
+                lcd_draw_sprite(sprite_slot_empty[0], x, y);
+              }
+            }
+
+            if (ui.menu_tab_selected && cursor_i == ui.inventory_cursor) {
+              render_cursor(x, y);
+            }
+          }
+        }
+      }
+
       break;
 
     case UI_STATE_CRAFT:
@@ -187,6 +231,10 @@ void render_menu() {
         render_item(item, 10*i, 40);
       }
 
+      break;
+
+    case UI_STATE_SETTINGS:
+      
       break;
 
     default:

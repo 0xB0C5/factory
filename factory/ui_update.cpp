@@ -69,6 +69,10 @@ void ui_update_queue_selected_recipe() {
 }
 
 void ui_select_inventory_item() {
+  if (ui.inventory_cursor >= PLAYER_INVENTORY_SIZE) {
+    // TODO!
+    return;
+  }
   uint8_t id = game.player.inventory[ui.inventory_cursor].id;
   switch (id) {
     case ITEM_FURNACE:
@@ -91,6 +95,39 @@ void ui_select_inventory_item() {
       break;
     default:
       break;
+  }
+}
+
+void ui_swap_inventory_items() {
+  machine_inventory_t machine_inventory;
+  bool uses_machine = ui.inventory_selected >= PLAYER_INVENTORY_SIZE || ui.inventory_cursor >= PLAYER_INVENTORY_SIZE;
+  
+  if (uses_machine) {
+    if (!load_machine_inventory(&machine_inventory, game.player.x + ui.player_facing.x, game.player.y + ui.player_facing.y)) {
+      return;
+    }
+  }
+
+  inventory_item_t *item0 = ui.inventory_selected < PLAYER_INVENTORY_SIZE
+    ? &game.player.inventory[ui.inventory_selected]
+    : &machine_inventory.items[ui.inventory_selected - PLAYER_INVENTORY_SIZE];
+  inventory_item_t *item1 = ui.inventory_cursor < PLAYER_INVENTORY_SIZE
+    ? &game.player.inventory[ui.inventory_cursor]
+    : &machine_inventory.items[ui.inventory_cursor - PLAYER_INVENTORY_SIZE];
+
+  // Swap the items.
+  inventory_item_t t = *item0;
+  *item0 = *item1;
+  *item1 = t;
+
+  if (uses_machine) {
+    if (!store_machine_inventory(&machine_inventory, game.player.x + ui.player_facing.x, game.player.y + ui.player_facing.y)) {
+      // Undo the swap.
+      t = *item0;
+      *item0 = *item1;
+      *item1 = t;
+      return;
+    }
   }
 }
 
@@ -127,22 +164,82 @@ void ui_update_menu() {
 
   switch (ui.state) {
     case UI_STATE_INVENTORY:
-      if (ui.input_pressed & INPUT_RIGHT) {
-        ui.inventory_cursor++;
-      }
-      if (ui.input_pressed & INPUT_LEFT) {
-        ui.inventory_cursor--;
-      }
-      if (ui.input_pressed & INPUT_DOWN) {
-        ui.inventory_cursor += 8;
-      }
-      if (ui.input_pressed & INPUT_UP) {
-        ui.inventory_cursor -= 8;
-      }
-      ui.inventory_cursor %= PLAYER_INVENTORY_SIZE;
+      {
+        machine_inventory_t machine_inventory;
+        bool has_machine = load_machine_inventory(&machine_inventory, game.player.x + ui.player_facing.x, game.player.y + ui.player_facing.y);
+        int machine_slots = has_machine ? machine_inventory.slot_count : 0;
+        int total_slots = PLAYER_INVENTORY_SIZE + machine_slots;
 
-      if (ui.input_pressed & INPUT_A) {
-        ui_select_inventory_item();
+        if (ui.inventory_cursor >= total_slots) {
+          ui.inventory_cursor = 0;
+        }
+
+        if (ui.inventory_selected != 0xff && ui.inventory_selected >= total_slots) {
+          ui.inventory_selected = 0;
+        }
+
+        // If we press A, select the item.
+        if (ui.input_pressed & INPUT_A) {
+          ui.inventory_selected = ui.inventory_cursor;
+        }
+
+        // Move the cursor.
+        uint8_t prev_cursor = ui.inventory_cursor;
+        if (ui.input_pressed & INPUT_RIGHT) {
+          ui.inventory_cursor++;
+
+          if (ui.inventory_cursor >= total_slots) {
+            ui.inventory_cursor = 0;
+          }
+        }
+        if (ui.input_pressed & INPUT_LEFT) {
+          if (ui.inventory_cursor == 0) {
+            ui.inventory_cursor = total_slots;
+          }
+          ui.inventory_cursor--;
+        }
+        if (ui.input_pressed & INPUT_DOWN) {
+          if (ui.inventory_cursor >= PLAYER_INVENTORY_SIZE) {
+            ui.inventory_cursor -= PLAYER_INVENTORY_SIZE;
+            ui.inventory_cursor *= 2;
+          } else if (ui.inventory_cursor < 8) {
+            ui.inventory_cursor += 8;
+          } else if (has_machine) {
+            ui.inventory_cursor = PLAYER_INVENTORY_SIZE + (ui.inventory_cursor - 8) / 2;
+            if (ui.inventory_cursor >= total_slots) ui.inventory_cursor = total_slots-1;
+          } else {
+            ui.inventory_cursor -= 8;
+          }
+        }
+        if (ui.input_pressed & INPUT_UP) {
+          if (ui.inventory_cursor >= PLAYER_INVENTORY_SIZE) {
+            ui.inventory_cursor -= PLAYER_INVENTORY_SIZE;
+            ui.inventory_cursor *= 2;
+            ui.inventory_cursor += 8;
+          } else if (ui.inventory_cursor >= 8) {
+            ui.inventory_cursor -= 8;
+          } else if (has_machine) {
+            ui.inventory_cursor = PLAYER_INVENTORY_SIZE + ui.inventory_cursor / 2;
+            if (ui.inventory_cursor >= total_slots) ui.inventory_cursor = total_slots-1;
+          } else {
+            ui.inventory_cursor += 8;
+          }
+        }
+  
+        // If we drag, flag we are swapping.
+        if ((ui.input & INPUT_A) && ui.inventory_cursor != prev_cursor) {
+          ui.inventory_swapping = true;
+        }
+  
+        if (ui.input_released & INPUT_A && ui.inventory_selected != 0xff) {
+          if (ui.inventory_swapping) {
+            ui_swap_inventory_items();
+          } else {
+            ui_select_inventory_item();
+          }
+          ui.inventory_selected = 0xff;
+          ui.inventory_swapping = false;
+        }
       }
 
       break;
@@ -275,6 +372,14 @@ void ui_update_action() {
 }
 
 void ui_update_level() {
+  bool is_player_aligned = ui.player_subcell.x == 0 && ui.player_subcell.y == 0;
+  if (is_player_aligned && ui.input_pressed & INPUT_B) {
+    ui.state = UI_STATE_INVENTORY;
+    ui.placing_item = ITEM_NONE;
+    ui.menu_tab_selected = false;
+    return;
+  }
+
   if (ui.placing_item != ITEM_NONE) {
     if (ui.input_pressed & INPUT_UP) {
       ui.placing_y--;
@@ -353,15 +458,7 @@ void ui_update_level() {
   }
 
   // Update player velocity.
-  bool is_player_aligned = ui.player_subcell.x == 0 && ui.player_subcell.y == 0;
   if (is_player_aligned) {
-    if (ui.input_pressed & INPUT_B) {
-      ui.state = UI_STATE_INVENTORY;
-      ui.placing_item = ITEM_NONE;
-      ui.menu_tab_selected = false;
-      return;
-    }
-
     ui.player_velocity.x = 0;
     ui.player_velocity.y = 0;
     if (ui.input & INPUT_UP) {
@@ -419,6 +516,7 @@ void craft_recipe(const recipe_t *recipe) {
   // Check we have enough items.
   for (int i = 0; i < 4; i++) {
     inventory_item_t recipe_item = recipe->items[i];
+    if (recipe_item.id == ITEM_NONE) break;
     int count = 0;
     for (int j = 0; j < PLAYER_INVENTORY_SIZE; j++) {
       inventory_item_t player_item = game.player.inventory[j];
@@ -445,6 +543,7 @@ void craft_recipe(const recipe_t *recipe) {
   // Remove the items.
   for (int i = 0; i < 4; i++) {
     inventory_item_t recipe_item = recipe->items[i];
+    if (recipe_item.id == ITEM_NONE) break;
     int remaining = recipe_item.count;
     for (int j = PLAYER_INVENTORY_SIZE-1; j >= 0; j--) {
       inventory_item_t *player_item = &game.player.inventory[j];
@@ -472,13 +571,27 @@ void ui_update() {
   // Update input.
   uint8_t input = input_read();
   uint8_t pressed = input & (~ui.input);
+  uint8_t released = ui.input & (~input);
   ui.input = input;
   ui.input_pressed = pressed;
+  ui.input_released = released;
 
   if (ui.state == UI_STATE_LEVEL) {
       ui_update_level();
   } else {
       ui_update_menu();
+  }
+
+  // Clear screen-dependent state.
+  if (ui.state == UI_STATE_LEVEL) {
+    ui.menu_tab_selected = false;
+  } else {
+    ui.placing_item = ITEM_NONE;
+  }
+
+  if (!ui.menu_tab_selected) {
+    ui.inventory_selected = 0xff;
+    ui.inventory_swapping = false;
   }
 
   // Update crafting.
@@ -498,4 +611,5 @@ void ui_update() {
   }
 
   ui.frame_counter++;
+  ui.level_subtick = (ui.level_subtick + 1) % LEVEL_SUBTICKS;
 }

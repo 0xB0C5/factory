@@ -19,7 +19,8 @@ typedef struct {
 	uint8_t state;
 
 	uint8_t input;
-	uint8_t input_pressed;
+  uint8_t input_pressed;
+  uint8_t input_released;
 
 	vec8_t player_subcell;
 	vec8_t player_velocity;
@@ -33,6 +34,8 @@ typedef struct {
   bool menu_tab_selected;
   uint8_t recipe_cursor;
   uint8_t inventory_cursor;
+  uint8_t inventory_selected;
+  bool inventory_swapping;
 
   uint8_t recipe_queue[RECIPE_QUEUE_SIZE];
   int16_t recipe_queue_count;
@@ -43,6 +46,8 @@ typedef struct {
   int16_t placing_x;
   int16_t placing_y;
   uint8_t placing_blocked;
+
+  uint8_t level_subtick;
 } ui_t;
 
 extern ui_t ui;

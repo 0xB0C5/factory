@@ -6,6 +6,7 @@
 #define LEVEL_WIDTH_CELLS 512
 #define LEVEL_HEIGHT_CELLS 384
 #define PLAYER_INVENTORY_SIZE 16
+#define LEVEL_SUBTICKS 9
 
 #define ITEM_NONE 0
 #define ITEM_ROCK 1
@@ -28,6 +29,7 @@
 #define ITEM_WIRE 18
 #define ITEM_WOOD 19
 
+#define ITEM_MACHINES_START 20
 #define ITEM_FURNACE 20
 #define ITEM_FURNACE1 21
 #define ITEM_FURNACE2 22
@@ -53,8 +55,16 @@ typedef struct {
 
 typedef struct {
   player_t player;
+  uint32_t tick_counter;
   cell_t level[LEVEL_HEIGHT_CELLS][LEVEL_WIDTH_CELLS];
 } game_t;
+
+typedef struct {
+  uint8_t item_id;
+  uint8_t slot_count;
+  uint16_t slot_capacity;
+  inventory_item_t items[4];
+} machine_inventory_t;
 
 extern game_t game;
 
@@ -62,3 +72,8 @@ void level_init();
 bool level_load();
 bool level_save();
 void level_generate(uint32_t seed);
+
+bool load_machine_inventory(machine_inventory_t *inventory, int16_t x, int16_t y);
+bool store_machine_inventory(machine_inventory_t *inventory, int16_t x, int16_t y);
+
+void level_update(uint8_t subtick);

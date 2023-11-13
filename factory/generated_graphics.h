@@ -1,10 +1,12 @@
 #include <avr/pgmspace.h>
 extern const uint8_t bg_cell_assembler[16][7];
+extern const uint8_t bg_cell_auto[6][7];
 extern const uint8_t bg_cell_blank[1][7];
 extern const uint8_t bg_cell_coal[16][7];
 extern const uint8_t bg_cell_conveyor[8][7];
 extern const uint8_t bg_cell_copper_ore[16][7];
 extern const uint8_t bg_cell_craft_progress[10][7];
+extern const uint8_t bg_cell_delete[4][7];
 extern const uint8_t bg_cell_drill[24][7];
 extern const uint8_t bg_cell_furnace[8][7];
 extern const uint8_t bg_cell_grabber[1][7];
@@ -13,6 +15,7 @@ extern const uint8_t bg_cell_iron_ore[16][7];
 extern const uint8_t bg_cell_lab[28][7];
 extern const uint8_t bg_cell_menu_tab[12][7];
 extern const uint8_t bg_cell_rock[16][7];
+extern const uint8_t bg_cell_save[4][7];
 extern const uint8_t bg_cell_storage[4][7];
 extern const uint8_t bg_cell_switcher[16][7];
 extern const uint8_t bg_cell_tree[1][7];
@@ -37,6 +40,7 @@ extern const uint8_t sprite_progress[12][16];
 extern const uint8_t sprite_recipe_colon[1][16];
 extern const uint8_t sprite_rock[1][16];
 extern const uint8_t sprite_science[1][16];
+extern const uint8_t sprite_slot_empty[1][16];
 extern const uint8_t sprite_storage_icon[1][16];
 extern const uint8_t sprite_switcher_icon[1][16];
 extern const uint8_t sprite_wire[1][16];
