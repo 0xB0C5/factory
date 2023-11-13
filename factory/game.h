@@ -12,8 +12,28 @@
 #define ITEM_COAL 2
 #define ITEM_IRON 3
 #define ITEM_COPPER 4
-#define ITEM_WATER 5
-#define ITEM_INVALID 6
+#define ITEM_ASSEMBLER 5
+#define ITEM_CIRCUIT 6
+#define ITEM_COG 7
+#define ITEM_CONVEYOR 8
+#define ITEM_DRILL 9
+// TODO 10
+#define ITEM_GRABBER 11
+#define ITEM_LAB 12
+#define ITEM_IRON_PLATE 13
+#define ITEM_COPPER_PLATE 14
+#define ITEM_SCIENCE 15
+#define ITEM_STORAGE 16
+#define ITEM_SWITCHER 17
+#define ITEM_WIRE 18
+#define ITEM_WOOD 19
+
+#define ITEM_FURNACE 20
+#define ITEM_FURNACE1 21
+#define ITEM_FURNACE2 22
+#define ITEM_FURNACE3 23
+
+#define ITEM_ID_COUNT 24
 
 typedef struct {
   uint8_t id : 6;
