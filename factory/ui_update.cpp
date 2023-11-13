@@ -285,6 +285,35 @@ void ui_update_menu() {
       }
       break;
 
+    case UI_STATE_SETTINGS:
+      if (ui.input_pressed & INPUT_RIGHT) {
+        ui.settings_cursor++;
+        if (ui.settings_cursor >= 3) {
+          ui.settings_cursor = 0;
+        }
+      }
+      if (ui.input_pressed & INPUT_LEFT) {
+        if (ui.settings_cursor == 0) {
+          ui.settings_cursor = 2;
+        } else {
+          ui.settings_cursor--;
+        }
+      }
+
+      if (ui.input_pressed & INPUT_A) {
+        switch (ui.settings_cursor) {
+          case 0:
+            ui.save_requested = true;
+            break;
+          case 1:
+            ui.delete_requested = true;
+            break;
+          case 2:
+            game.autosave = !game.autosave;
+        }
+      }
+      break;
+
     default:
       break;
   }
@@ -568,45 +597,52 @@ void craft_recipe(const recipe_t *recipe) {
 }
 
 void ui_update() {
-  // Update input.
-  uint8_t input = input_read();
-  uint8_t pressed = input & (~ui.input);
-  uint8_t released = ui.input & (~input);
-  ui.input = input;
-  ui.input_pressed = pressed;
-  ui.input_released = released;
-
-  if (ui.state == UI_STATE_LEVEL) {
-      ui_update_level();
-  } else {
-      ui_update_menu();
-  }
-
-  // Clear screen-dependent state.
-  if (ui.state == UI_STATE_LEVEL) {
-    ui.menu_tab_selected = false;
-  } else {
-    ui.placing_item = ITEM_NONE;
-  }
-
-  if (!ui.menu_tab_selected) {
-    ui.inventory_selected = 0xff;
-    ui.inventory_swapping = false;
-  }
-
-  // Update crafting.
-  if (ui.recipe_queue_count) {
-    const recipe_t *recipe = &recipes[ui.recipe_queue[0]];
-    if (ui.recipe_progress < recipe->time) {
-      ui.recipe_progress++;
+  if (!ui.save_requested) {
+    // Update input.
+    uint8_t input = input_read();
+    uint8_t pressed = input & (~ui.input);
+    uint8_t released = ui.input & (~input);
+    ui.input = input;
+    ui.input_pressed = pressed;
+    ui.input_released = released;
+  
+    if (ui.state == UI_STATE_LEVEL) {
+        ui_update_level();
     } else {
-      ui.recipe_progress = 0;
-      craft_recipe(recipe);
-      // Pop the 0th recipe from the queue.
-      ui.recipe_queue_count--;
-      for (int i = 0; i < ui.recipe_queue_count; i++) {
-        ui.recipe_queue[i] = ui.recipe_queue[i+1];
+        ui_update_menu();
+    }
+  
+    // Clear screen-dependent state.
+    if (ui.state == UI_STATE_LEVEL) {
+      ui.menu_tab_selected = false;
+    } else {
+      ui.placing_item = ITEM_NONE;
+    }
+  
+    if (!ui.menu_tab_selected) {
+      ui.inventory_selected = 0xff;
+      ui.inventory_swapping = false;
+    }
+  
+    // Update crafting.
+    if (ui.recipe_queue_count) {
+      const recipe_t *recipe = &recipes[ui.recipe_queue[0]];
+      if (ui.recipe_progress < recipe->time) {
+        ui.recipe_progress++;
+      } else {
+        ui.recipe_progress = 0;
+        craft_recipe(recipe);
+        // Pop the 0th recipe from the queue.
+        ui.recipe_queue_count--;
+        for (int i = 0; i < ui.recipe_queue_count; i++) {
+          ui.recipe_queue[i] = ui.recipe_queue[i+1];
+        }
       }
+    }
+
+    // Autosave, approx every 5 minutes.
+    if (game.autosave && game.tick_counter - game.save_tick >= 300) {
+      ui.save_requested = true;
     }
   }
 

@@ -36,6 +36,7 @@ typedef struct {
   uint8_t inventory_cursor;
   uint8_t inventory_selected;
   bool inventory_swapping;
+  uint8_t settings_cursor;
 
   uint8_t recipe_queue[RECIPE_QUEUE_SIZE];
   int16_t recipe_queue_count;
@@ -48,6 +49,9 @@ typedef struct {
   uint8_t placing_blocked;
 
   uint8_t level_subtick;
+
+  bool save_requested;
+  bool delete_requested;
 } ui_t;
 
 extern ui_t ui;

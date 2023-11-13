@@ -13,8 +13,6 @@ const uint8_t INPUTS[]     = {INPUT_A, INPUT_B, INPUT_RIGHT, INPUT_DOWN, INPUT_U
 
 #define INPUT_COUNT 6
 
-uint8_t cur_input = 0;
-
 void input_init() {
   for (int i = 0; i < INPUT_COUNT; i++) {
     pinMode(INPUT_PINS[i], INPUT_PULLUP);
@@ -29,11 +27,5 @@ uint8_t input_read() {
     }
   }
 
-  if (res != cur_input) {
-    Serial.print("INPUT: ");
-    Serial.println(res);
-    cur_input = res;
-  }
-  
 	return res;
 }

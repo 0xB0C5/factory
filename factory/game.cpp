@@ -9,18 +9,48 @@
 game_t game;
 
 const char *LEVEL_FILENAME = "level.bin";
+const char *TEMP_FILENAME = "temp.bin";
 
 LittleFS_Program fileSystem;
+
+void printDirectory(File dir, int numSpaces) {
+   while(true) {
+     File entry = dir.openNextFile();
+     if (!entry) {
+       break;
+     }
+     // printSpaces(numSpaces);
+     Serial.println(entry.name());
+     /*
+     if (entry.isDirectory()) {
+       Serial.println("/");
+       printDirectory(entry, numSpaces+2);
+     } else {
+       // files have sizes, directories do not
+       printSpaces(36 - numSpaces - strlen(entry.name()));
+       Serial.print("  ");
+       Serial.println(entry.size(), DEC);
+     }
+     */
+     entry.close();
+   }
+}
 
 void level_init()
 {
   if (!fileSystem.begin(1024L * 1024L)) {
-    fatalError("Failed to start filesystem!");
+    fatalError("NO FILESYSTEM");
   }
+
+  // Serial.println("FILES:");
+  // printDirectory(fileSystem.open("/"), 0);
 }
+
 
 bool level_load() {
   File file = fileSystem.open(LEVEL_FILENAME, FILE_READ);
+
+  if (!file) file = fileSystem.open(TEMP_FILENAME, FILE_READ);
 
   if (!file) return false;
 
@@ -33,31 +63,46 @@ bool level_load() {
 }
 
 bool level_save() {
-  // TODO : ideally we'd do something that doesn't get borked if the power is cut.
-  File file = fileSystem.open(LEVEL_FILENAME, FILE_WRITE);
+  // Remove temp file.
+  fileSystem.remove(TEMP_FILENAME);
 
-  if (!file) return false;
+  game.save_tick = game.tick_counter;
+
+  // Write to a temp file in case power is cut.
+  File file = fileSystem.open(TEMP_FILENAME, FILE_WRITE);
+
+  if (!file) {
+    return false;
+  }
 
   size_t written = file.write(&game, sizeof(game));
 
   file.flush();
   file.close();
 
-  return (written == sizeof(game));
+  if (written != sizeof(game)) {
+    return false;
+  }
+
+  // Now that we've written the temp file, we can safely delete the main file.
+  fileSystem.remove(LEVEL_FILENAME);
+  fileSystem.rename(TEMP_FILENAME, LEVEL_FILENAME);
+
+  return true;
 }
 
 static const int resource_patch_counts[] = {999,        999,        999,        999};
 static const int resource_patch_ids[]    = {ITEM_COAL, ITEM_ROCK, ITEM_IRON, ITEM_COPPER};
 
-void level_generate(uint32_t seed) {
+void level_generate() {
+  // TODO ???
+  uint32_t seed = 1234;
+  
   memset(&game, 0, sizeof(game));
 
   randomSeed(seed);
 
   for (uint16_t i = 0; i < sizeof(resource_patch_counts)/sizeof(resource_patch_counts[0]); i++) {
-    Serial.print("Generating resource #");
-    Serial.println(i);
-
     for (int patch = 0; patch < resource_patch_counts[i]; patch++) {
       int size = random(8, 16);
       int y0 = random(LEVEL_HEIGHT_CELLS + 1 - size);

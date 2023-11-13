@@ -5,6 +5,8 @@
 #include "battery.h"
 #include "ui.h"
 #include "render.h"
+#include "fatal_error.h"
+
 // Uncomment for delay() to reduce power.
 // #include <Snooze.h>
 
@@ -21,7 +23,7 @@ void setup(void)
 
   level_init();
   if (!level_load()) {
-    level_generate(1234);
+    level_generate();
   }
   ui_reset();
 
@@ -36,7 +38,18 @@ void loop(void)
 {
   level_update(ui.level_subtick);
   ui_update();
+
+  if (ui.delete_requested) {
+    level_generate();
+    ui_reset();
+    return;
+  }
+
   render();
+  if (ui.save_requested && ui.level_subtick == 0) {
+    ui.save_requested = false;
+    level_save();
+  }
 
   uint32_t wait_duration = frame_time + 100 - millis();
   if (wait_duration > 100) {
@@ -44,5 +57,6 @@ void loop(void)
     frame_time = millis();
   } else {
     delay(wait_duration);
+    frame_time += 100;
   }
 }

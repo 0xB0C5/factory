@@ -234,7 +234,34 @@ void render_menu() {
       break;
 
     case UI_STATE_SETTINGS:
-      
+      {
+        const int8_t save_x = 5;
+        const int8_t delete_x = 31;
+        const int8_t auto_x = 57;
+        const int8_t y = 15;
+
+        int visible_cursor = ui.menu_tab_selected ? ui.settings_cursor : -1;
+        if (visible_cursor != 0 || (ui.frame_counter & 0b100)) {
+          lcd_draw_bg(bg_cell_save[0], save_x, y);
+          lcd_draw_bg(bg_cell_save[1], save_x+8, y);
+          lcd_draw_bg(bg_cell_save[2], save_x, y+7);
+          lcd_draw_bg(bg_cell_save[3], save_x+8, y+7);
+        }
+  
+        if (visible_cursor != 1 || (ui.frame_counter & 0b100)) {
+          lcd_draw_bg(bg_cell_delete[0], delete_x, y);
+          lcd_draw_bg(bg_cell_delete[1], delete_x+8, y);
+          lcd_draw_bg(bg_cell_delete[2], delete_x, y+7);
+          lcd_draw_bg(bg_cell_delete[3], delete_x+8, y+7);
+        }
+  
+        if (visible_cursor != 2 || (ui.frame_counter & 0b100)) {
+          lcd_draw_bg(bg_cell_auto[0], auto_x, y);
+          lcd_draw_bg(bg_cell_auto[1], auto_x+8, y);
+          lcd_draw_bg(bg_cell_auto[game.autosave ? 4 : 2], auto_x, y+7);
+          lcd_draw_bg(bg_cell_auto[game.autosave ? 5 : 3], auto_x+8, y+7);
+        }
+      }
       break;
 
     default:
@@ -334,6 +361,18 @@ void render_level() {
 }
 
 void render() {
+  if (ui.save_requested) {
+    lcd_clear();
+    int8_t save_x = 34;
+    int8_t save_y = 16;
+    lcd_draw_bg(bg_cell_save[0], save_x, save_y);
+    lcd_draw_bg(bg_cell_save[1], save_x+8, save_y);
+    lcd_draw_bg(bg_cell_save[2], save_x, save_y+7);
+    lcd_draw_bg(bg_cell_save[3], save_x+8, save_y+7);
+    lcd_refresh();
+    return;
+  }
+  
   if (ui.state == UI_STATE_LEVEL) {
     render_level();
   } else {

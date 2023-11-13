@@ -56,6 +56,8 @@ typedef struct {
 typedef struct {
   player_t player;
   uint32_t tick_counter;
+  uint32_t save_tick;
+  bool autosave;
   cell_t level[LEVEL_HEIGHT_CELLS][LEVEL_WIDTH_CELLS];
 } game_t;
 
@@ -71,7 +73,7 @@ extern game_t game;
 void level_init();
 bool level_load();
 bool level_save();
-void level_generate(uint32_t seed);
+void level_generate();
 
 bool load_machine_inventory(machine_inventory_t *inventory, int16_t x, int16_t y);
 bool store_machine_inventory(machine_inventory_t *inventory, int16_t x, int16_t y);
