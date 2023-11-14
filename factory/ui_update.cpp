@@ -100,13 +100,24 @@ void ui_select_inventory_item() {
 }
 
 void ui_swap_inventory_items() {
+
   machine_inventory_t machine_inventory;
-  bool uses_machine = ui.inventory_selected >= PLAYER_INVENTORY_SIZE || ui.inventory_cursor >= PLAYER_INVENTORY_SIZE;
-  
-  if (uses_machine) {
-    if (!load_machine_inventory(&machine_inventory, game.player.x + ui.player_facing.x, game.player.y + ui.player_facing.y)) {
-      return;
-    }
+  bool has_machine = load_machine_inventory(&machine_inventory, game.player.x + ui.player_facing.x, game.player.y + ui.player_facing.y);
+
+  bool uses_machine = false;
+  int capacity0 = 64;
+  int capacity1 = 64;
+
+  if (ui.inventory_selected >= PLAYER_INVENTORY_SIZE) {
+    if (!has_machine) return;
+    uses_machine = true;
+    capacity0 = machine_inventory.slot_capacity;
+  }
+
+  if (ui.inventory_cursor >= PLAYER_INVENTORY_SIZE) {
+    if (!has_machine) return;
+    uses_machine = true;
+    capacity1 = machine_inventory.slot_capacity;
   }
 
   inventory_item_t *item0 = ui.inventory_selected < PLAYER_INVENTORY_SIZE
@@ -116,17 +127,40 @@ void ui_swap_inventory_items() {
     ? &game.player.inventory[ui.inventory_cursor]
     : &machine_inventory.items[ui.inventory_cursor - PLAYER_INVENTORY_SIZE];
 
-  // Swap the items.
-  inventory_item_t t = *item0;
-  *item0 = *item1;
-  *item1 = t;
+  // Move items.
+  inventory_item_t old_item0 = *item0;
+  inventory_item_t old_item1 = *item1;
+
+  if (item0->id == ITEM_NONE) {
+    // Split item1 to item0.
+    int n = item1->count / 2;
+    if (n > capacity0) n = capacity0;
+    item1->count -= n;
+    item0->count += n;
+    if (item0->count > 0) item0->id = item1->id;
+  } else if (item0->id == item1->id || item1->id == ITEM_NONE) {
+    // Move item1 to item2.
+    int n = item0->count;
+    if (item1->count + n > capacity1) {
+      n = capacity1 - item1->count;
+    }
+    item1->count += n;
+    if (item1->count > 0) item1->id = item0->id;
+    item0->count -= n;
+    if (item0->count == 0) item0->id = ITEM_NONE;
+  } else {
+    // Swap if possible.
+    if (item0->count <= capacity1 && item1->count <= capacity0) {
+      *item0 = old_item1;
+      *item1 = old_item0;
+    }
+  }
 
   if (uses_machine) {
     if (!store_machine_inventory(&machine_inventory, game.player.x + ui.player_facing.x, game.player.y + ui.player_facing.y)) {
-      // Undo the swap.
-      t = *item0;
-      *item0 = *item1;
-      *item1 = t;
+      // Undo.
+      *item0 = old_item0;
+      *item1 = old_item1;
       return;
     }
   }

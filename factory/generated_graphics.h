@@ -7,6 +7,7 @@ extern const uint8_t bg_cell_conveyor[8][7];
 extern const uint8_t bg_cell_copper_ore[16][7];
 extern const uint8_t bg_cell_craft_progress[10][7];
 extern const uint8_t bg_cell_delete[4][7];
+extern const uint8_t bg_cell_dots[1][7];
 extern const uint8_t bg_cell_drill[24][7];
 extern const uint8_t bg_cell_furnace[8][7];
 extern const uint8_t bg_cell_grabber[1][7];

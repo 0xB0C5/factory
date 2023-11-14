@@ -128,7 +128,7 @@ void render_menu() {
         inventory_item_t item = game.player.inventory[i];
     
         uint8_t x = 3 + (i % 8) * 10;
-        uint8_t y = 7 + (i / 8) * 16;
+        uint8_t y = 7 + (i / 8) * 15;
 
         if (item.id != ITEM_NONE) {
           render_count(item.count, x+1, y+9);
@@ -151,11 +151,12 @@ void render_menu() {
         machine_inventory_t machine_inventory;
         if (load_machine_inventory(&machine_inventory, game.player.x + ui.player_facing.x, game.player.y + ui.player_facing.y)) {
           // Show the machine's inventory.
-          render_item(machine_inventory.item_id, 3, 40);
+          lcd_draw_sprite(sprite_recipe_colon[0], 8, 40);
+          render_item(machine_inventory.item_id, 0, 40);
 
           for (int i = 0; i < machine_inventory.slot_count; i++) {
-            uint8_t x = 16 + 16*i;
-            uint8_t y = 40;
+            uint8_t x = 12 + 18*i;
+            uint8_t y = 39;
 
             inventory_item_t item = machine_inventory.items[i];
 
@@ -200,15 +201,16 @@ void render_menu() {
 
       // Render selected recipe.
       if (ui.menu_tab_selected && ui.recipe_cursor != recipe_count) {
-        render_item(recipes[ui.recipe_cursor].result, 0, 25);
-        lcd_draw_sprite(sprite_recipe_colon[0], 9, 25);
-        
+        render_item(recipes[ui.recipe_cursor].result, 3, 26);
+        render_count(recipes[ui.recipe_cursor].yield, 12, 28);
+        lcd_draw_sprite(sprite_recipe_colon[0], 20, 26);
+
         for (int i = 0; i < 4; i++) {
           inventory_item_t item = recipes[ui.recipe_cursor].items[i];
           if (item.id == ITEM_NONE) break;
 
-          render_count(item.count, 14 + 18*i, 27);
-          render_item(item.id, 22 + 18*i, 25);
+          render_item(item.id, 27 + 19*i, 26);
+          render_count(item.count, 36 + 19*i, 28);
         }
       }
 
@@ -234,6 +236,10 @@ void render_menu() {
 
         uint8_t item = recipes[ui.recipe_queue[i]].result;
         render_item(item, 10*i, 40);
+      }
+
+      if (ui.recipe_queue_count > 8) {
+        lcd_draw_bg(bg_cell_dots[0], 79, 45);
       }
 
       break;
