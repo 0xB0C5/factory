@@ -6,7 +6,7 @@
 #define LEVEL_WIDTH_CELLS 512
 #define LEVEL_HEIGHT_CELLS 384
 #define PLAYER_INVENTORY_SIZE 16
-#define LEVEL_SUBTICKS 9
+#define LEVEL_SUBTICKS 10
 
 #define ITEM_NONE 0
 #define ITEM_ROCK 1
@@ -20,7 +20,6 @@
 #define ITEM_DRILL 9
 // TODO 10
 #define ITEM_GRABBER 11
-#define ITEM_LAB 12
 #define ITEM_IRON_PLATE 13
 #define ITEM_COPPER_PLATE 14
 #define ITEM_SCIENCE 15
@@ -30,12 +29,18 @@
 #define ITEM_WOOD 19
 
 #define ITEM_MACHINES_START 20
+
 #define ITEM_FURNACE 20
 #define ITEM_FURNACE1 21
 #define ITEM_FURNACE2 22
 #define ITEM_FURNACE3 23
 
-#define ITEM_ID_COUNT 24
+#define ITEM_LAB 24
+#define ITEM_LAB1 25
+#define ITEM_LAB2 26
+#define ITEM_LAB3 27
+
+#define ITEM_ID_COUNT 28
 
 typedef struct {
   uint8_t id : 6;
@@ -56,6 +61,7 @@ typedef struct {
 typedef struct {
   player_t player;
   uint32_t tick_counter;
+  uint32_t science_counter;
   uint32_t save_tick;
   bool autosave;
   cell_t level[LEVEL_HEIGHT_CELLS][LEVEL_WIDTH_CELLS];

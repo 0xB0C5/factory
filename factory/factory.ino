@@ -48,7 +48,9 @@ void loop(void)
   render();
   if (ui.save_requested && ui.level_subtick == 0) {
     ui.save_requested = false;
-    level_save();
+    if (!level_save()) {
+      showError("SAVE FAILED.");
+    }
   }
 
   uint32_t wait_duration = frame_time + 100 - millis();

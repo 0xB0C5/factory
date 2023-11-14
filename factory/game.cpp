@@ -88,6 +88,7 @@ bool level_save() {
   fileSystem.remove(LEVEL_FILENAME);
   fileSystem.rename(TEMP_FILENAME, LEVEL_FILENAME);
 
+  // Even if the rename didn't work, the temp file still exists, so this can be considered a success.
   return true;
 }
 
@@ -143,13 +144,18 @@ bool load_machine_inventory(machine_inventory_t *inventory, int16_t x, int16_t y
 
   switch (base_id) {
     case ITEM_FURNACE:
-      inventory->item_id = base_id;
       inventory->slot_count = 3;
+      inventory->slot_capacity = 64;
+      break;
+    case ITEM_LAB:
+      inventory->slot_count = 1;
       inventory->slot_capacity = 64;
       break;
     default:
       return false;
   }
+
+  inventory->item_id = base_id;
 
   for (int i = 0; i < inventory->slot_count; i++) {
     uint16_t d = game.level[y0 + (i>>1)][x0 + (i&1)].data;
@@ -173,10 +179,15 @@ bool store_machine_inventory(machine_inventory_t *inventory, int16_t x, int16_t 
   int x0 = x - (offset & 1);
   int y0 = y - (offset >> 1);
 
+  if (inventory->item_id != base_id) return false;
+
   switch (base_id) {
     case ITEM_FURNACE:
-      if (inventory->item_id != base_id) return false;
       if (inventory->slot_count != 3) return false;
+      if (inventory->slot_capacity != 64) return false;
+      break;
+    case ITEM_LAB:
+      if (inventory->slot_count != 1) return false;
       if (inventory->slot_capacity != 64) return false;
       break;
     default:
@@ -319,16 +330,30 @@ void update_furnace(int x, int y) {
   store_machine_inventory(&inventory, x, y);
 }
 
+void update_lab(int x, int y) {
+  machine_inventory_t inventory;
+  if (!load_machine_inventory(&inventory, x, y)) return;
+
+  for (int i = 0; i < inventory.slot_count; i++) {
+    if (inventory.items[i].id == ITEM_SCIENCE) {
+      inventory.items[i].count--;
+      if (inventory.items[i].count == 0) {
+        inventory.items[i].id = ITEM_NONE;
+      }
+      game.science_counter++;
+      store_machine_inventory(&inventory, x, y);
+      return;
+    }
+  }
+}
+
 void level_update(uint8_t subtick) {
-  if (subtick >= 8) {
+  if (subtick == LEVEL_SUBTICKS-1) {
     game.tick_counter++;
     return;
   }
 
-  int yStart = subtick * (LEVEL_HEIGHT_CELLS / 8);
-  int yEnd = yStart + (LEVEL_HEIGHT_CELLS / 8);
-
-  for (int y = yStart; y < yEnd; y++) {
+  for (int y = subtick; y < LEVEL_HEIGHT_CELLS; y += LEVEL_SUBTICKS - 1) {
     for (int x = 0; x < LEVEL_WIDTH_CELLS; x++) {
       switch (game.level[y][x].id) {
         case ITEM_FURNACE:
@@ -338,6 +363,15 @@ void level_update(uint8_t subtick) {
             uint8_t update_tick = (x >> 2) & 3;
             if ((game.tick_counter & 3) == update_tick) {
               update_furnace(x, y);
+            }
+            break;
+          }
+        case ITEM_LAB:
+          {
+            // Labs update every 8 ticks.
+            uint8_t update_tick = (x >> 2) & 7;
+            if ((game.tick_counter & 7) == update_tick) {
+              update_lab(x, y);
             }
             break;
           }

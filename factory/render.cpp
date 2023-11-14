@@ -78,17 +78,22 @@ void render_item(uint8_t id, int8_t x, int8_t y) {
   lcd_draw_sprite(sprite, x, y);
 }
 
+void render_2_digits(uint8_t value, int8_t x, int8_t y) {
+  lcd_draw_digit(value / 10, x, y);
+  lcd_draw_digit(value % 10, x + 4, y);
+}
+
 void render_count(uint8_t count, int8_t x, int8_t y) {
   if (count >= 10) {
     lcd_draw_digit(count / 10, x, y);
     lcd_draw_digit(count % 10, x + 4, y);
   } else {
-    lcd_draw_digit(count, x, y);
+    lcd_draw_digit(count, x + 2, y);
   }
 }
 
 void render_cursor(int8_t x, int8_t y) {
-  int cursor_index = ((ui.frame_counter >> 2) & 3) << 2;
+  int cursor_index = ((ui.frame_counter >> 1) & 3) << 2;
   lcd_draw_sprite(sprite_cursor[cursor_index], x-1, y-1);
   lcd_draw_sprite(sprite_cursor[cursor_index|1], x+7, y-1);
   lcd_draw_sprite(sprite_cursor[cursor_index|2], x-1, y+7);
@@ -99,7 +104,7 @@ void render_menu() {
   lcd_clear();
 
   uint8_t visible_state = ui.state;
-  if (!ui.menu_tab_selected && (ui.frame_counter & 0b100)) {
+  if (!ui.menu_tab_selected && (ui.frame_counter & 0b10)) {
     visible_state = 0xff;
   }
 
@@ -129,7 +134,7 @@ void render_menu() {
           render_count(item.count, x+1, y+9);
         }
 
-        if (!ui.inventory_swapping || (i != ui.inventory_selected && i != ui.inventory_cursor) || (ui.frame_counter & 0b100)) {
+        if (!ui.inventory_swapping || (i != ui.inventory_selected && i != ui.inventory_cursor) || (ui.frame_counter & 0b10)) {
           if (item.id != ITEM_NONE) {
             render_item(item.id, x, y);
           } else {
@@ -159,7 +164,7 @@ void render_menu() {
             }
 
             int cursor_i = i+PLAYER_INVENTORY_SIZE;
-            if (!ui.inventory_swapping || (cursor_i != ui.inventory_selected && cursor_i != ui.inventory_cursor) || (ui.frame_counter & 0b100)) {
+            if (!ui.inventory_swapping || (cursor_i != ui.inventory_selected && cursor_i != ui.inventory_cursor) || (ui.frame_counter & 0b10)) {
               if (item.id != ITEM_NONE) {
                 render_item(item.id, x, y);
               } else {
@@ -241,21 +246,21 @@ void render_menu() {
         const int8_t y = 15;
 
         int visible_cursor = ui.menu_tab_selected ? ui.settings_cursor : -1;
-        if (visible_cursor != 0 || (ui.frame_counter & 0b100)) {
+        if (visible_cursor != 0 || (ui.frame_counter & 0b10)) {
           lcd_draw_bg(bg_cell_save[0], save_x, y);
           lcd_draw_bg(bg_cell_save[1], save_x+8, y);
           lcd_draw_bg(bg_cell_save[2], save_x, y+7);
           lcd_draw_bg(bg_cell_save[3], save_x+8, y+7);
         }
   
-        if (visible_cursor != 1 || (ui.frame_counter & 0b100)) {
+        if (visible_cursor != 1 || (ui.frame_counter & 0b10)) {
           lcd_draw_bg(bg_cell_delete[0], delete_x, y);
           lcd_draw_bg(bg_cell_delete[1], delete_x+8, y);
           lcd_draw_bg(bg_cell_delete[2], delete_x, y+7);
           lcd_draw_bg(bg_cell_delete[3], delete_x+8, y+7);
         }
   
-        if (visible_cursor != 2 || (ui.frame_counter & 0b100)) {
+        if (visible_cursor != 2 || (ui.frame_counter & 0b10)) {
           lcd_draw_bg(bg_cell_auto[0], auto_x, y);
           lcd_draw_bg(bg_cell_auto[1], auto_x+8, y);
           lcd_draw_bg(bg_cell_auto[game.autosave ? 4 : 2], auto_x, y+7);
@@ -263,6 +268,42 @@ void render_menu() {
         }
       }
       break;
+
+    case UI_STATE_INFO:
+    {
+      uint32_t seconds = game.tick_counter % 60;
+      uint32_t minutes_total = game.tick_counter / 60;
+      uint32_t minutes = minutes_total % 60;
+      uint32_t hours = minutes_total / 60;
+
+      if (hours > 99) {
+        hours = 99;
+        minutes = 59;
+        seconds = 59;
+      }
+
+      const int8_t time_y = 16;
+      lcd_draw_bg(bg_cell_time[(ui.frame_counter >> 1) & 7], 26, time_y);
+
+      lcd_draw_bg(bg_cell_time_colon[0], 44, time_y+1);
+      lcd_draw_bg(bg_cell_time_colon[0], 54, time_y+1);
+
+      render_2_digits(hours, 36, time_y+1);
+      render_2_digits(minutes, 46, time_y+1);
+      render_2_digits(seconds, 56, time_y+1);
+
+      const int8_t science_y = 28;
+      lcd_draw_sprite(sprite_science[0], 26, science_y);
+
+      uint32_t science = game.science_counter;
+      if (science > 9999999LL) {
+        science = 9999999LL;
+      }
+      for (int i = 0; i < 7; i++) {
+        lcd_draw_digit(science % 10, 60 - 4*i, science_y+2);
+        science /= 10;
+      }
+    }
 
     default:
       break;
@@ -292,7 +333,7 @@ void render_level() {
       int8_t y = (cell_y * 7) - camera_y;
 
       uint8_t id = game.level[cell_y][cell_x].id;
-      if (ui.placing_item != ITEM_NONE && (ui.frame_counter & 0b100)) {
+      if (ui.placing_item != ITEM_NONE && (ui.frame_counter & 0b10)) {
         if (cell_x >= ui.placing_x && cell_x < ui.placing_x + 2 && cell_y >= ui.placing_y && cell_y < ui.placing_y + 2) {
           int offset = (cell_x - ui.placing_x) + 2*(cell_y - ui.placing_y);
           if (ui.placing_blocked & (1 << offset)) {
@@ -331,6 +372,18 @@ void render_level() {
           break;
         case ITEM_FURNACE3:
           bg = bg_cell_furnace[3];
+          break;
+        case ITEM_LAB:
+          bg = bg_cell_lab[0];
+          break;
+        case ITEM_LAB1:
+          bg = bg_cell_lab[1];
+          break;
+        case ITEM_LAB2:
+          bg = bg_cell_lab[2];
+          break;
+        case ITEM_LAB3:
+          bg = bg_cell_lab[3];
           break;
         case ITEM_ID_COUNT:
           bg = bg_cell_x[0];

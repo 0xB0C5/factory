@@ -76,6 +76,7 @@ void ui_select_inventory_item() {
   uint8_t id = game.player.inventory[ui.inventory_cursor].id;
   switch (id) {
     case ITEM_FURNACE:
+    case ITEM_LAB:
       // Start placing 2x2 item.
       ui.placing_item = id;
       ui.placing_item_size = 2;
