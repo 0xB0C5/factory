@@ -27,6 +27,37 @@ bool ui_try_add_player_inventory(uint8_t id) {
   return false;
 }
 
+void add_player_items_if_possible(uint8_t id, uint8_t count) {
+  for (int i = 0; i < PLAYER_INVENTORY_SIZE; i++) {
+    inventory_item_t *item = &game.player.inventory[i];
+    if (item->id == id) {
+      int add = count;
+      if (item->count + add > 64) {
+        add = 64 - item->count;
+      }
+      
+      item->count += add;
+      count -= add;
+      if (count == 0) return;
+    }
+  }
+
+  for (int i = 0; i < PLAYER_INVENTORY_SIZE; i++) {
+    inventory_item_t *item = &game.player.inventory[i];
+    if (item->id == ITEM_NONE) {
+      int add = count;
+      if (add > 64) {
+        add = 64;
+      }
+      
+      item->count = add;
+      item->id = id;
+      count -= add;
+      if (count == 0) return;
+    }
+  }
+}
+
 static int16_t temp_item_counts[ITEM_ID_COUNT];
 
 void ui_update_queue_selected_recipe() {
@@ -460,6 +491,11 @@ void ui_update_action() {
       case ITEM_FURNACE2:
       case ITEM_FURNACE3:
       
+      case ITEM_ASSEMBLER:
+      case ITEM_ASSEMBLER1:
+      case ITEM_ASSEMBLER2:
+      case ITEM_ASSEMBLER3:
+      
       case ITEM_LAB:
       case ITEM_LAB1:
       case ITEM_LAB2:
@@ -477,6 +513,17 @@ void ui_update_action() {
           int16_t item_pos_x = action_x - (offset & 1);
   
           if (ui_try_add_player_inventory(base_item)) {
+            machine_inventory_t machine_inventory;
+            if (load_machine_inventory(&machine_inventory, action_x, action_y)) {
+              for (int i = 0; i < machine_inventory.slot_count; i++) {
+                inventory_item_t item = machine_inventory.items[i];
+                if (item.id != ITEM_NONE) {
+                  add_player_items_if_possible(item.id, item.count);
+                }
+              }
+            }
+
+            
             cell_t blank = {0, 0};
             game.level[item_pos_y][item_pos_x] = blank;
             game.level[item_pos_y][item_pos_x+1] = blank;
