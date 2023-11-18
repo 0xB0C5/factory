@@ -14,7 +14,7 @@ uint32_t frame_time;
 
 void setup(void)
 {
-  Serial.begin(9600);
+  // Serial.begin(9600);
 
   lcd_init();
   battery_init();
@@ -27,9 +27,8 @@ void setup(void)
   }
   ui_reset();
 
-  // TODO : ???
-  // This shows the logo.
-  // delay(4000);
+  // Show the logo.
+  delay(4000);
 
   frame_time = millis();
 }

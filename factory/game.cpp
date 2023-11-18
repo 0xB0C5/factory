@@ -92,20 +92,18 @@ bool level_save() {
   return true;
 }
 
-static const int resource_patch_counts[] = {999,        999,        999,        999};
+static const int resource_patch_counts[] = {150,       150,       150,       150};
 static const int resource_patch_ids[]    = {ITEM_COAL, ITEM_ROCK, ITEM_IRON, ITEM_COPPER};
 
 void level_generate() {
-  // TODO ???
-  uint32_t seed = 1234;
-  
   memset(&game, 0, sizeof(game));
 
+  uint32_t seed = ARM_DWT_CYCCNT;
   randomSeed(seed);
 
   for (uint16_t i = 0; i < sizeof(resource_patch_counts)/sizeof(resource_patch_counts[0]); i++) {
     for (int patch = 0; patch < resource_patch_counts[i]; patch++) {
-      int size = random(8, 16);
+      int size = random(7, 12);
       int y0 = random(LEVEL_HEIGHT_CELLS + 1 - size);
       int x0 = random(LEVEL_WIDTH_CELLS + 1 - size);
 
@@ -116,7 +114,7 @@ void level_generate() {
           float dist = sqrtf(dist_x*dist_x + dist_y*dist_y);
           if (dist*2 > size) continue;
           float density = (size - dist) / (float)size;
-          uint16_t count = (uint16_t)(density * 1023);
+          uint16_t count = (uint16_t)(density * 511);
 
           cell_t *cell = &(game.level[y0+dy][x0+dx]);
           if (count > cell->data) {
@@ -125,6 +123,43 @@ void level_generate() {
           }
         }
       }
+    }
+  }
+
+  // Delete adjacent resources so drills never have multiple resources.
+  cell_t empty = {ITEM_NONE, 0};
+  for (int y = 0; y < LEVEL_HEIGHT_CELLS-1; y++) {
+    for (int x = 0; x < LEVEL_WIDTH_CELLS-1; x++) {
+      if (game.level[y][x].id == ITEM_NONE) continue;
+
+      if (game.level[y][x+1].id != game.level[y][x].id) {
+        game.level[y][x+1] = empty;
+      }
+      if (game.level[y+1][x].id != game.level[y][x].id) {
+        game.level[y+1][x] = empty;
+      }
+      if (game.level[y+1][x+1].id != game.level[y][x].id) {
+        game.level[y+1][x+1] = empty;
+      }
+    }
+  }
+
+  // Block off edges of the map.
+  cell_t blocked = {ITEM_WALL, 0};
+  for (int y = 0; y < LEVEL_HEIGHT_CELLS; y++) {
+    for (int x = 0; x < 4; x++) {
+      game.level[y][x] = blocked;
+    }
+    for (int x = LEVEL_WIDTH_CELLS-4; x < LEVEL_WIDTH_CELLS; x++) {
+      game.level[y][x] = blocked;
+    }
+  }
+  for (int x = 0; x < LEVEL_WIDTH_CELLS; x++) {
+    for (int y = 0; y < 4; y++) {
+      game.level[y][x] = blocked;
+    }
+    for (int y = LEVEL_HEIGHT_CELLS-4; y < LEVEL_HEIGHT_CELLS; y++) {
+      game.level[y][x] = blocked;
     }
   }
 
@@ -145,6 +180,10 @@ bool load_machine_inventory(machine_inventory_t *inventory, int16_t x, int16_t y
   switch (base_id) {
     case ITEM_FURNACE:
       inventory->slot_count = 3;
+      inventory->slot_capacity = 64;
+      break;
+    case ITEM_DRILL:
+      inventory->slot_count = 2;
       inventory->slot_capacity = 64;
       break;
     case ITEM_LAB:
@@ -184,6 +223,10 @@ bool store_machine_inventory(machine_inventory_t *inventory, int16_t x, int16_t 
   switch (base_id) {
     case ITEM_FURNACE:
       if (inventory->slot_count != 3) return false;
+      if (inventory->slot_capacity != 64) return false;
+      break;
+    case ITEM_DRILL:
+      if (inventory->slot_count != 2) return false;
       if (inventory->slot_capacity != 64) return false;
       break;
     case ITEM_LAB:
@@ -276,7 +319,7 @@ void update_furnace(int x, int y) {
   int copper_index = -1;
   int iron_plate_index = -1;
   int copper_plate_index = -1;
-  for (int i = 0; i < inventory.slot_count; i++) {
+  for (int i = inventory.slot_count-1; i >= 0; i--) {
     inventory_item_t item = inventory.items[i];
     if (item.id == ITEM_NONE) {
       iron_plate_index = i;
@@ -330,6 +373,60 @@ void update_furnace(int x, int y) {
   store_machine_inventory(&inventory, x, y);
 }
 
+void update_drill(int x, int y) {
+  machine_inventory_t inventory;
+  if (!load_machine_inventory(&inventory, x, y)) return;
+
+  uint16_t data2 = game.level[y+1][x].data;
+  uint8_t resource_id = data2 & 0b11111;
+  uint16_t burn_remainder = data2 >> 5;
+  if (burn_remainder) {
+    burn_remainder--;
+    game.level[y+1][x].data = (burn_remainder << 5) | resource_id;
+  }
+
+  if (game.level[y+1][x+1].data == 0) return; // Nothing to mine!
+
+  int coal_index = -1;
+  int output_index = -1;
+  for (int i = inventory.slot_count-1; i >= 0; i--) {
+    inventory_item_t item = inventory.items[i];
+    if (item.id == ITEM_NONE) {
+      output_index = i;
+    } else {
+      if (item.id == ITEM_COAL) {
+        coal_index = i;
+      }
+      if (item.id == resource_id) {
+        if (item.count < 64) output_index = i;
+      }
+    }
+  }
+
+  if (burn_remainder == 0 && coal_index == -1) {
+    // No fuel.
+    return;
+  }
+
+  // Nowhere to place it.
+  if (output_index == -1) return;
+
+  // Mine!
+  if (burn_remainder == 0) {
+    inventory.items[coal_index].count--;
+    if (inventory.items[coal_index].count == 0) inventory.items[coal_index].id = ITEM_NONE;
+    // Update burn remainder.
+    game.level[y+1][x].data = (8 << 5) | resource_id;
+  }
+
+  game.level[y+1][x+1].data--;
+
+  inventory.items[output_index].count++;
+  inventory.items[output_index].id = resource_id;
+
+  store_machine_inventory(&inventory, x, y);
+}
+
 void update_lab(int x, int y) {
   machine_inventory_t inventory;
   if (!load_machine_inventory(&inventory, x, y)) return;
@@ -372,6 +469,15 @@ void level_update(uint8_t subtick) {
             uint8_t update_tick = (x >> 2) & 7;
             if ((game.tick_counter & 7) == update_tick) {
               update_lab(x, y);
+            }
+            break;
+          }
+        case ITEM_DRILL:
+          {
+            // Drills update every 4 ticks.
+            uint8_t update_tick = (x >> 2) & 3;
+            if ((game.tick_counter & 3) == update_tick) {
+              update_drill(x, y);
             }
             break;
           }

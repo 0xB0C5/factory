@@ -367,6 +367,11 @@ void render_level() {
         case ITEM_COPPER:
           bg = bg_cell_copper_ore[((cell_y & 3) << 2) | (cell_x & 3)];
           break;
+
+        case ITEM_WALL:
+          bg = bg_cell_wall[0];
+          break;
+          
         case ITEM_FURNACE:
           bg = bg_cell_furnace[0];
           break;
@@ -391,6 +396,21 @@ void render_level() {
         case ITEM_LAB3:
           bg = bg_cell_lab[3];
           break;
+
+
+        case ITEM_DRILL:
+          bg = bg_cell_drill[0];
+          break;
+        case ITEM_DRILL1:
+          bg = bg_cell_drill[1];
+          break;
+        case ITEM_DRILL2:
+          bg = bg_cell_drill[2];
+          break;
+        case ITEM_DRILL3:
+          bg = bg_cell_drill[3];
+          break;
+          
         case ITEM_ID_COUNT:
           bg = bg_cell_x[0];
           break;

@@ -22,6 +22,7 @@ extern const uint8_t bg_cell_switcher[16][7];
 extern const uint8_t bg_cell_time[8][7];
 extern const uint8_t bg_cell_time_colon[1][7];
 extern const uint8_t bg_cell_tree[1][7];
+extern const uint8_t bg_cell_wall[1][7];
 extern const uint8_t bg_cell_x[1][7];
 extern const uint8_t sprite_assembler_icon[1][16];
 extern const uint8_t sprite_circuit[1][16];

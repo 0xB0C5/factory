@@ -17,8 +17,7 @@
 #define ITEM_CIRCUIT 6
 #define ITEM_COG 7
 #define ITEM_CONVEYOR 8
-#define ITEM_DRILL 9
-// TODO 10
+#define ITEM_WALL 10
 #define ITEM_GRABBER 11
 #define ITEM_IRON_PLATE 13
 #define ITEM_COPPER_PLATE 14
@@ -40,7 +39,12 @@
 #define ITEM_LAB2 26
 #define ITEM_LAB3 27
 
-#define ITEM_ID_COUNT 28
+#define ITEM_DRILL 28
+#define ITEM_DRILL1 29
+#define ITEM_DRILL2 30
+#define ITEM_DRILL3 31
+
+#define ITEM_ID_COUNT 32
 
 typedef struct {
   uint8_t id : 6;
