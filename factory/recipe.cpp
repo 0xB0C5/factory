@@ -23,11 +23,9 @@ static const recipe_t recipe_array[] = {
   {
     ITEM_DRILL, 32, 1, {{ITEM_COG, 3}, {ITEM_IRON_PLATE, 3}, {ITEM_FURNACE, 1}},
   },
-  /*
   {
     ITEM_ASSEMBLER, 64, 1, {{ITEM_CIRCUIT, 3}, {ITEM_COG, 5}, {ITEM_IRON_PLATE, 9}},
   },
-  */
   {
     ITEM_LAB, 64, 1, {{ITEM_CIRCUIT, 10}, {ITEM_COG, 10}, {ITEM_CONVEYOR, 4}},
   },

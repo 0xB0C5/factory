@@ -57,18 +57,20 @@ void render_item(uint8_t id, int8_t x, int8_t y) {
     case ITEM_SCIENCE:
       sprite = sprite_science[0];
       break;
-    case ITEM_STORAGE:
-      sprite = sprite_storage_icon[0];
-      break;
     case ITEM_SWITCHER:
       sprite = sprite_switcher_icon[0];
       break;
     case ITEM_WIRE:
       sprite = sprite_wire[0];
       break;
+      /*
+    case ITEM_STORAGE:
+      sprite = sprite_storage_icon[0];
+      break;
     case ITEM_WOOD:
       sprite = sprite_wood[0];
       break;
+      */
 
     default:
       // Don't render.
@@ -183,65 +185,96 @@ void render_menu() {
       break;
 
     case UI_STATE_CRAFT:
-      // Render selectable recipes.
-      for (int i = 0; i <= recipe_count; i++) {
-        uint8_t x = 3 + (i % 8) * 10;
-        uint8_t y = 7 + (i / 8) * 9;
-
-        if (i == recipe_count) {
-          x = 73;
-          lcd_draw_sprite(sprite_x[0], x, y);
-        } else {
-          render_item(recipes[i].result, x, y);
-        }
-        if (ui.menu_tab_selected && i == ui.recipe_cursor) {
-          render_cursor(x, y);
-        }
-      }
-
-      // Render selected recipe.
-      if (ui.menu_tab_selected && ui.recipe_cursor != recipe_count) {
-        render_item(recipes[ui.recipe_cursor].result, 3, 26);
-        render_count(recipes[ui.recipe_cursor].yield, 12, 28);
-        lcd_draw_sprite(sprite_recipe_colon[0], 20, 26);
-
-        for (int i = 0; i < 4; i++) {
-          inventory_item_t item = recipes[ui.recipe_cursor].items[i];
-          if (item.id == ITEM_NONE) break;
-
-          render_item(item.id, 27 + 19*i, 26);
-          render_count(item.count, 36 + 19*i, 28);
-        }
-      }
-
-      // Render craft progress.
       {
-        lcd_draw_bg(bg_cell_craft_progress[9], -6, 35);
-        lcd_draw_bg(bg_cell_craft_progress[9], 82, 35);
-        int progress_pixels = 0;
-        if (ui.recipe_queue_count) {
-          progress_pixels = 80 * ui.recipe_progress / (recipes[ui.recipe_queue[0]].time - 1);
+        // Render selectable recipes.
+        for (int i = 0; i <= recipe_count; i++) {
+          uint8_t x = 3 + (i % 8) * 10;
+          uint8_t y = 7 + (i / 8) * 9;
+  
+          if (i == recipe_count) {
+            x = 73;
+            lcd_draw_sprite(sprite_x[0], x, y);
+          } else {
+            render_item(recipes[i].result, x, y);
+          }
+          if (ui.menu_tab_selected && i == ui.recipe_cursor) {
+            render_cursor(x, y);
+          }
         }
-        for (int i = 0; i < 10; i++) {
-          int cell_progress = progress_pixels - 8*i;
-          if (cell_progress < 0) cell_progress = 0;
-          if (cell_progress > 8) cell_progress = 8;
-          lcd_draw_bg(bg_cell_craft_progress[cell_progress], 2+8*i, 35);
+  
+        int16_t facing_y = game.player.y + ui.player_facing.y;
+        int16_t facing_x = game.player.x + ui.player_facing.x;
+        uint8_t facing_id = game.level[facing_y][facing_x].id;
+  
+        if (facing_id >= ITEM_ASSEMBLER && facing_id <= ITEM_ASSEMBLER3) {
+          // Render assembler recipe
+          render_item(ITEM_ASSEMBLER, 0, 28);
+          lcd_draw_sprite(sprite_recipe_colon[0], 9, 28);
+          int8_t diff = facing_id - ITEM_ASSEMBLER;
+          int8_t dx = diff & 1;
+          int8_t dy = diff >> 1;
+          int16_t assembler_x = facing_x - dx;
+          int16_t assembler_y = facing_y - dy;
+          cell_t data_cell = game.level[assembler_y+1][assembler_x+1];
+          uint8_t assembler_recipe = (data_cell.data & 0b11111) - 1;
+          if (assembler_recipe != 0xff) {
+            render_item(recipes[assembler_recipe].result, 3, 38);
+            render_count(recipes[assembler_recipe].yield, 12, 40);
+            lcd_draw_sprite(sprite_recipe_colon[0], 20, 38);
+    
+            for (int i = 0; i < 4; i++) {
+              inventory_item_t item = recipes[assembler_recipe].items[i];
+              if (item.id == ITEM_NONE) break;
+    
+              render_item(item.id, 27 + 19*i, 38);
+              render_count(item.count, 36 + 19*i, 40);
+            }
+          }
+        } else {
+          // Render selected recipe.
+          if (ui.menu_tab_selected && ui.recipe_cursor != recipe_count) {
+            render_item(recipes[ui.recipe_cursor].result, 3, 26);
+            render_count(recipes[ui.recipe_cursor].yield, 12, 28);
+            lcd_draw_sprite(sprite_recipe_colon[0], 20, 26);
+    
+            for (int i = 0; i < 4; i++) {
+              inventory_item_t item = recipes[ui.recipe_cursor].items[i];
+              if (item.id == ITEM_NONE) break;
+    
+              render_item(item.id, 27 + 19*i, 26);
+              render_count(item.count, 36 + 19*i, 28);
+            }
+          }
+    
+          // Render craft progress.
+          {
+            lcd_draw_bg(bg_cell_craft_progress[9], -6, 35);
+            lcd_draw_bg(bg_cell_craft_progress[9], 82, 35);
+            int progress_pixels = 0;
+            if (ui.recipe_queue_count) {
+              progress_pixels = 80 * ui.recipe_progress / (recipes[ui.recipe_queue[0]].time - 1);
+            }
+            for (int i = 0; i < 10; i++) {
+              int cell_progress = progress_pixels - 8*i;
+              if (cell_progress < 0) cell_progress = 0;
+              if (cell_progress > 8) cell_progress = 8;
+              lcd_draw_bg(bg_cell_craft_progress[cell_progress], 2+8*i, 35);
+            }
+          }
+        }
+  
+        // Render recipe queue.
+        for (int i = 0; i < 8; i++) {
+          if (i == ui.recipe_queue_count) break;
+  
+          uint8_t item = recipes[ui.recipe_queue[i]].result;
+          render_item(item, 10*i, 40);
+        }
+  
+        if (ui.recipe_queue_count > 8) {
+          lcd_draw_bg(bg_cell_dots[0], 79, 45);
         }
       }
-
-      // Render recipe queue.
-      for (int i = 0; i < 8; i++) {
-        if (i == ui.recipe_queue_count) break;
-
-        uint8_t item = recipes[ui.recipe_queue[i]].result;
-        render_item(item, 10*i, 40);
-      }
-
-      if (ui.recipe_queue_count > 8) {
-        lcd_draw_bg(bg_cell_dots[0], 79, 45);
-      }
-
       break;
 
     case UI_STATE_SETTINGS:
@@ -271,6 +304,17 @@ void render_menu() {
           lcd_draw_bg(bg_cell_auto[1], auto_x+8, y);
           lcd_draw_bg(bg_cell_auto[game.autosave ? 4 : 2], auto_x, y+7);
           lcd_draw_bg(bg_cell_auto[game.autosave ? 5 : 3], auto_x+8, y+7);
+        }
+
+        // lcd contrast
+        int8_t contrast_y = 38;
+        uint8_t contrast = game.contrast >> 1;
+        for (int i = 0; i < 64; i += 8) {
+          lcd_draw_bg(bg_cell_line[0], 8+i, contrast_y);
+        }
+        
+        if (visible_cursor != 3 || (ui.frame_counter & 0b10)) {
+          lcd_draw_sprite(sprite_line_cursor[0], 8 + contrast, contrast_y);
         }
       }
       break;
@@ -371,32 +415,6 @@ void render_level() {
         case ITEM_WALL:
           bg = bg_cell_wall[0];
           break;
-          
-        case ITEM_FURNACE:
-          bg = bg_cell_furnace[0];
-          break;
-        case ITEM_FURNACE1:
-          bg = bg_cell_furnace[1];
-          break;
-        case ITEM_FURNACE2:
-          bg = bg_cell_furnace[2];
-          break;
-        case ITEM_FURNACE3:
-          bg = bg_cell_furnace[3];
-          break;
-        case ITEM_LAB:
-          bg = bg_cell_lab[0];
-          break;
-        case ITEM_LAB1:
-          bg = bg_cell_lab[1];
-          break;
-        case ITEM_LAB2:
-          bg = bg_cell_lab[2];
-          break;
-        case ITEM_LAB3:
-          bg = bg_cell_lab[3];
-          break;
-
 
         case ITEM_DRILL:
           bg = bg_cell_drill[0];
@@ -409,6 +427,45 @@ void render_level() {
           break;
         case ITEM_DRILL3:
           bg = bg_cell_drill[3];
+          break;
+
+        case ITEM_ASSEMBLER:
+          bg = bg_cell_assembler[0];
+          break;
+        case ITEM_ASSEMBLER1:
+          bg = bg_cell_assembler[1];
+          break;
+        case ITEM_ASSEMBLER2:
+          bg = bg_cell_assembler[2];
+          break;
+        case ITEM_ASSEMBLER3:
+          bg = bg_cell_assembler[3];
+          break;
+
+        case ITEM_FURNACE:
+          bg = bg_cell_furnace[0];
+          break;
+        case ITEM_FURNACE1:
+          bg = bg_cell_furnace[1];
+          break;
+        case ITEM_FURNACE2:
+          bg = bg_cell_furnace[2];
+          break;
+        case ITEM_FURNACE3:
+          bg = bg_cell_furnace[3];
+          break;
+
+        case ITEM_LAB:
+          bg = bg_cell_lab[0];
+          break;
+        case ITEM_LAB1:
+          bg = bg_cell_lab[1];
+          break;
+        case ITEM_LAB2:
+          bg = bg_cell_lab[2];
+          break;
+        case ITEM_LAB3:
+          bg = bg_cell_lab[3];
           break;
           
         case ITEM_ID_COUNT:

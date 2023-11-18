@@ -96,7 +96,13 @@ static const int resource_patch_counts[] = {150,       150,       150,       150
 static const int resource_patch_ids[]    = {ITEM_COAL, ITEM_ROCK, ITEM_IRON, ITEM_COPPER};
 
 void level_generate() {
+  // Preserve contrast, autosave.
+  uint8_t contrast = game.contrast;
+  bool autosave = game.autosave;
+
   memset(&game, 0, sizeof(game));
+  game.contrast = contrast;
+  game.autosave = autosave;
 
   uint32_t seed = ARM_DWT_CYCCNT;
   randomSeed(seed);
@@ -179,6 +185,7 @@ bool load_machine_inventory(machine_inventory_t *inventory, int16_t x, int16_t y
 
   switch (base_id) {
     case ITEM_FURNACE:
+    case ITEM_ASSEMBLER:
       inventory->slot_count = 3;
       inventory->slot_capacity = 64;
       break;
@@ -222,6 +229,7 @@ bool store_machine_inventory(machine_inventory_t *inventory, int16_t x, int16_t 
 
   switch (base_id) {
     case ITEM_FURNACE:
+    case ITEM_ASSEMBLER:
       if (inventory->slot_count != 3) return false;
       if (inventory->slot_capacity != 64) return false;
       break;
@@ -444,6 +452,83 @@ void update_lab(int x, int y) {
   }
 }
 
+void update_assembler(int x, int y) {
+  machine_inventory_t inventory;
+  if (!load_machine_inventory(&inventory, x, y)) return;
+
+  uint16_t d3 = game.level[y+1][x+1].data;
+  uint8_t recipe_index = (d3 & 0b11111) - 1;
+  if (recipe_index == 0xff) {
+    // Mark as not in progress.
+    game.level[y+1][x+1].data = 0;
+    return;
+  }
+
+  const recipe_t *recipe = &recipes[recipe_index];
+
+  // Remove the items for the recipe.
+  for (int i = 0; i < 4; i++) {
+    uint8_t id = recipe->items[i].id;
+    if (id == ITEM_NONE) break;
+
+    int remain = recipe->items[i].count;
+    for (int j = 0; j < inventory.slot_count; j++) {
+      if (inventory.items[j].id == id) {
+        int remove;
+        if (inventory.items[j].count <= remain) {
+          remove = inventory.items[j].count;
+        } else {
+          remove = remain;
+        }
+
+        remain -= remove;
+        inventory.items[j].count -= remove;
+        if (inventory.items[j].count == 0) inventory.items[j].id = ITEM_NONE;
+
+        if (remain == 0) break;
+      }
+    }
+
+    if (remain > 0) {
+      // Can't do the recipe.
+      // Mark as not in progress, with the existing recipe index.
+      // (Don't save the inventory, so the change doesn't get persisted.)
+      game.level[y+1][x+1].data = recipe_index + 1;
+      return;
+    }
+  }
+
+  // Find a slot for the output.
+  int output_index = -1;
+  for (int i = 0; i < inventory.slot_count; i++) {
+    uint8_t id = inventory.items[i].id;
+    if (id == ITEM_NONE || (id == recipe->result && inventory.items[i].count + recipe->yield <= inventory.slot_capacity)) {
+      output_index = i;
+      break;
+    }
+  }
+
+  if (output_index == -1) {
+    // Can't do the recipe.
+    // Mark as not in progress, with the existing recipe index.
+    // (Don't save the inventory, so the change doesn't get persisted.)
+    game.level[y+1][x+1].data = recipe_index + 1;
+    return;
+  }
+
+  // Can do the recipe!
+  uint8_t progress = (((d3 >> 5) & 0b11111) + 1) << 4;
+  if (progress >= recipe->time) {
+    progress = 0;
+    inventory.items[output_index].count += recipe->yield;
+    inventory.items[output_index].id = recipe->result;
+    store_machine_inventory(&inventory, x, y);
+  }
+
+  // In progress, progress, recipe index
+  game.level[y+1][x+1].data = 0b10000000000 | (progress << 1) | (recipe_index + 1);
+}
+
 void level_update(uint8_t subtick) {
   if (subtick == LEVEL_SUBTICKS-1) {
     game.tick_counter++;
@@ -478,6 +563,15 @@ void level_update(uint8_t subtick) {
             uint8_t update_tick = (x >> 2) & 3;
             if ((game.tick_counter & 3) == update_tick) {
               update_drill(x, y);
+            }
+            break;
+          }
+        case ITEM_ASSEMBLER:
+          {
+            // Assemblers update every 4 ticks.
+            uint8_t update_tick = (x >> 2) & 3;
+            if ((game.tick_counter & 3) == update_tick) {
+              update_assembler(x, y);
             }
             break;
           }

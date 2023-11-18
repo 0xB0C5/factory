@@ -16,7 +16,6 @@ void setup(void)
 {
   // Serial.begin(9600);
 
-  lcd_init();
   battery_init();
 
   input_init();
@@ -27,7 +26,11 @@ void setup(void)
   }
   ui_reset();
 
+  if (game.contrast == 0) game.contrast = 0x31;
+  lcd_set_contrast(game.contrast);
+
   // Show the logo.
+  lcd_refresh();
   delay(4000);
 
   frame_time = millis();

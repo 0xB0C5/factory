@@ -325,7 +325,8 @@ void LcdClear(void)
   }
 }
 
-void LcdInitialise(void)
+static uint8_t lcd_contrast = 0x31;
+void LcdInitialise()
 {
   pinMode(PIN_SCE, OUTPUT);
   pinMode(PIN_RESET, OUTPUT);
@@ -335,18 +336,24 @@ void LcdInitialise(void)
   digitalWrite(PIN_RESET, LOW);
   digitalWrite(PIN_RESET, HIGH);
   LcdWrite(LCD_C, 0x21 );  // LCD Extended Commands.
-  LcdWrite(LCD_C, 0xB5 );  // Set LCD Vop (Contrast). 0xB1
+  LcdWrite(LCD_C, 0x80 | lcd_contrast );  // Set LCD Vop (Contrast).
   LcdWrite(LCD_C, 0x04 );  // Set Temp coefficent. //0x04
   LcdWrite(LCD_C, 0x14 );  // LCD bias mode 1:48. //0x13
   LcdWrite(LCD_C, 0x20 );  // LCD Basic Commands
   LcdWrite(LCD_C, 0x0C );  // LCD in normal mode.
 }
 
-
 void lcd_init()
 {
+}
+
+void lcd_set_contrast(uint8_t contrast) {
+  lcd_contrast = contrast;
   LcdInitialise();
-  lcd_refresh();
+}
+
+uint8_t lcd_get_contrast() {
+  return lcd_contrast;
 }
 
 void lcd_refresh() {

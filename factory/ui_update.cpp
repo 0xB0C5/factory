@@ -3,6 +3,7 @@
 #include "game.h"
 #include "fatal_error.h"
 #include "recipe.h"
+#include "lcd.h"
 #include <string.h>
 
 bool ui_try_add_player_inventory(uint8_t id) {
@@ -75,8 +76,9 @@ void ui_select_inventory_item() {
   uint8_t id = game.player.inventory[ui.inventory_cursor].id;
   switch (id) {
     case ITEM_FURNACE:
-    case ITEM_LAB:
     case ITEM_DRILL:
+    case ITEM_ASSEMBLER:
+    case ITEM_LAB:
       // Start placing 2x2 item.
       ui.placing_item = id;
       ui.placing_item_size = 2;
@@ -292,59 +294,106 @@ void ui_update_menu() {
           ui.recipe_cursor = recipe_count;
         }
       }
-      if (ui.input_pressed & INPUT_DOWN) {
-        ui.recipe_cursor += 8;
-        if (ui.recipe_cursor > recipe_count) {
-          ui.recipe_cursor %= 8;
-        }
-      }
-      if (ui.input_pressed & INPUT_UP) {
-        // There's probably a better way to do this but whatever.
-        ui.recipe_cursor -= 8;
-        if (ui.recipe_cursor > recipe_count) {
-          do {
+      if (ui.input_pressed & (INPUT_DOWN | INPUT_UP)) {
+        if (ui.recipe_cursor < 8) {
+          if (ui.recipe_cursor + 8 < recipe_count) {
             ui.recipe_cursor += 8;
-          } while (ui.recipe_cursor <= recipe_count);
-
-          ui.recipe_cursor -= 8;
+          } else {
+            ui.recipe_cursor = recipe_count;
+          }
+        } else {
+          if (ui.recipe_cursor == recipe_count) {
+            ui.recipe_cursor = 7;
+          } else {
+            ui.recipe_cursor -= 8;
+          }
         }
       }
+
       if (ui.input_pressed & INPUT_A) {
-        if (ui.recipe_cursor == recipe_count) {
-          // Cancel recipes.
-          ui.recipe_queue_count = 0;
-          ui.recipe_progress = 0;
+        int16_t facing_y = game.player.y + ui.player_facing.y;
+        int16_t facing_x = game.player.x + ui.player_facing.x;
+        uint8_t facing_id = game.level[facing_y][facing_x].id;
+        if (facing_id >= ITEM_ASSEMBLER && facing_id <= ITEM_ASSEMBLER3) {
+          // Set the assembler's recipe.
+          int8_t diff = facing_id - ITEM_ASSEMBLER;
+          int8_t dx = diff & 1;
+          int8_t dy = diff >> 1;
+          int16_t assembler_x = facing_x - dx;
+          int16_t assembler_y = facing_y - dy;
+          cell_t *data_cell = &game.level[assembler_y+1][assembler_x+1];
+          uint16_t recipe_data;
+          if (ui.recipe_cursor < recipe_count) {
+            recipe_data = ui.recipe_cursor + 1;
+          } else {
+            recipe_data = 0;
+          }
+          data_cell->data = (data_cell->data & ~0b11111) | recipe_data;
         } else {
-          ui_update_queue_selected_recipe();
+          // Craft.
+          if (ui.recipe_cursor == recipe_count) {
+            // Cancel recipes.
+            ui.recipe_queue_count = 0;
+            ui.recipe_progress = 0;
+          } else {
+            ui_update_queue_selected_recipe();
+          }
         }
       }
       break;
 
     case UI_STATE_SETTINGS:
-      if (ui.input_pressed & INPUT_RIGHT) {
-        ui.settings_cursor++;
-        if (ui.settings_cursor >= 3) {
+      if (ui.input_pressed & (INPUT_DOWN | INPUT_UP)) {
+        if (ui.settings_cursor < 3) {
+          ui.settings_cursor = 3;
+        } else {
           ui.settings_cursor = 0;
         }
       }
-      if (ui.input_pressed & INPUT_LEFT) {
-        if (ui.settings_cursor == 0) {
-          ui.settings_cursor = 2;
-        } else {
-          ui.settings_cursor--;
+    
+      if (ui.settings_cursor < 3) {
+        if (ui.input_pressed & INPUT_RIGHT) {
+          ui.settings_cursor++;
+          if (ui.settings_cursor >= 3) {
+            ui.settings_cursor = 0;
+          }
         }
-      }
+        if (ui.input_pressed & INPUT_LEFT) {
+          if (ui.settings_cursor == 0) {
+            ui.settings_cursor = 2;
+          } else {
+            ui.settings_cursor--;
+          }
+        }
+  
+        if (ui.input_pressed & INPUT_A) {
+          switch (ui.settings_cursor) {
+            case 0:
+              ui.save_requested = true;
+              break;
+            case 1:
+              ui.delete_requested = true;
+              break;
+            case 2:
+              game.autosave = !game.autosave;
+          }
+        }
+      } else {
+        int contrast = lcd_get_contrast();
+        int new_contrast = contrast;
+        if (ui.input_pressed & INPUT_RIGHT) {
+          new_contrast += 2;
+          if (new_contrast > 127) new_contrast = 127;
+        }
 
-      if (ui.input_pressed & INPUT_A) {
-        switch (ui.settings_cursor) {
-          case 0:
-            ui.save_requested = true;
-            break;
-          case 1:
-            ui.delete_requested = true;
-            break;
-          case 2:
-            game.autosave = !game.autosave;
+        if (ui.input_pressed & INPUT_LEFT) {
+          new_contrast -= 2;
+          if (new_contrast < 0) new_contrast = 0;
+        }
+
+        if (new_contrast != contrast) {
+          game.contrast = new_contrast;
+          lcd_set_contrast(new_contrast);
         }
       }
       break;

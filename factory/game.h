@@ -13,21 +13,23 @@
 #define ITEM_COAL 2
 #define ITEM_IRON 3
 #define ITEM_COPPER 4
-#define ITEM_ASSEMBLER 5
-#define ITEM_CIRCUIT 6
-#define ITEM_COG 7
-#define ITEM_CONVEYOR 8
-#define ITEM_WALL 10
-#define ITEM_GRABBER 11
-#define ITEM_IRON_PLATE 13
-#define ITEM_COPPER_PLATE 14
-#define ITEM_SCIENCE 15
-#define ITEM_STORAGE 16
-#define ITEM_SWITCHER 17
-#define ITEM_WIRE 18
-#define ITEM_WOOD 19
+#define ITEM_CIRCUIT 5
+#define ITEM_COG 6
+#define ITEM_WALL 7
+#define ITEM_IRON_PLATE 8
+#define ITEM_COPPER_PLATE 9
+#define ITEM_SCIENCE 10
+#define ITEM_WIRE 11
+#define ITEM_CONVEYOR 12
+#define ITEM_GRABBER 13
+#define ITEM_SWITCHER 14
 
-#define ITEM_MACHINES_START 20
+#define ITEM_MACHINES_START 16
+
+#define ITEM_ASSEMBLER 16
+#define ITEM_ASSEMBLER1 17
+#define ITEM_ASSEMBLER2 18
+#define ITEM_ASSEMBLER3 19
 
 #define ITEM_FURNACE 20
 #define ITEM_FURNACE1 21
@@ -68,6 +70,7 @@ typedef struct {
   uint32_t science_counter;
   uint32_t save_tick;
   bool autosave;
+  uint8_t contrast;
   cell_t level[LEVEL_HEIGHT_CELLS][LEVEL_WIDTH_CELLS];
 } game_t;
 
