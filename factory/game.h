@@ -21,7 +21,7 @@
 #define ITEM_SCIENCE 10
 #define ITEM_WIRE 11
 #define ITEM_CONVEYOR 12
-#define ITEM_GRABBER 13
+#define ITEM_SPLITTER 13
 #define ITEM_SWITCHER 14
 
 #define ITEM_MACHINES_START 16
@@ -47,6 +47,11 @@
 #define ITEM_DRILL3 31
 
 #define ITEM_ID_COUNT 32
+
+#define DIRECTION_UP 0
+#define DIRECTION_DOWN 1
+#define DIRECTION_LEFT 2
+#define DIRECTION_RIGHT 3
 
 typedef struct {
   uint8_t id : 6;

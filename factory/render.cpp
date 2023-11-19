@@ -42,8 +42,8 @@ void render_item(uint8_t id, int8_t x, int8_t y) {
     case ITEM_FURNACE:
       sprite = sprite_furnace_icon[0];
       break;
-    case ITEM_GRABBER:
-      sprite = sprite_grabber_icon[0];
+    case ITEM_SPLITTER:
+      sprite = sprite_splitter_icon[0];
       break;
     case ITEM_LAB:
       sprite = sprite_lab_icon[0];
@@ -382,20 +382,21 @@ void render_level() {
       int8_t x = (cell_x * 8) - camera_x;
       int8_t y = (cell_y * 7) - camera_y;
 
-      uint8_t id = game.level[cell_y][cell_x].id;
-      if (ui.placing_item != ITEM_NONE && (ui.frame_counter & 0b10)) {
-        if (cell_x >= ui.placing_x && cell_x < ui.placing_x + 2 && cell_y >= ui.placing_y && cell_y < ui.placing_y + 2) {
+      cell_t cell = game.level[cell_y][cell_x];
+      if (ui.placing_item != ITEM_NONE && (ui.frame_counter & 0b11)) {
+        if (cell_x >= ui.placing_x && cell_x < ui.placing_x + ui.placing_item_size && cell_y >= ui.placing_y && cell_y < ui.placing_y + ui.placing_item_size) {
           int offset = (cell_x - ui.placing_x) + 2*(cell_y - ui.placing_y);
           if (ui.placing_blocked & (1 << offset)) {
-            id = ITEM_ID_COUNT; // Use invalid ID.
+            cell.id = ITEM_ID_COUNT; // Use invalid ID.
           } else {
-            id = ui.placing_item + offset;
+            cell.id = ui.placing_item + offset;
           }
+          cell.data = ui.placing_data;
         }
       }
 
       const uint8_t *bg;
-      switch(id) {
+      switch(cell.id) {
         case ITEM_NONE:
           bg = bg_cell_grass[((cell_y & 3) << 2) | (cell_x & 3)];
           break;
@@ -416,56 +417,84 @@ void render_level() {
           bg = bg_cell_wall[0];
           break;
 
+        case ITEM_CONVEYOR:
+          switch (cell.data & 0b11) {
+            case DIRECTION_UP:
+              bg = bg_cell_conveyor[4 + ((~ui.frame_counter >> 1) & 3)];
+              break;
+            case DIRECTION_DOWN:
+              bg = bg_cell_conveyor[4 + ((ui.frame_counter >> 1) & 3)];
+              break;
+            case DIRECTION_LEFT:
+              bg = bg_cell_conveyor[(~ui.frame_counter >> 1) & 3];
+              break;
+            case DIRECTION_RIGHT:
+              bg = bg_cell_conveyor[(ui.frame_counter >> 1) & 3];
+              break;
+            default:
+              bg = bg_cell_x[0];
+              break;
+          }
+          break;
+
+      case ITEM_SWITCHER:
+        bg = bg_cell_switcher[0];
+        break;
+
+      case ITEM_SPLITTER:
+        bg = bg_cell_splitter[0];
+        break;
+
         case ITEM_DRILL:
-          bg = bg_cell_drill[0];
+          bg = bg_cell_drill[0 + ((ui.frame_counter & 6) << 1)];
           break;
         case ITEM_DRILL1:
-          bg = bg_cell_drill[1];
+          bg = bg_cell_drill[1 + ((ui.frame_counter & 6) << 1)];
           break;
         case ITEM_DRILL2:
-          bg = bg_cell_drill[2];
+          bg = bg_cell_drill[2 + ((ui.frame_counter & 6) << 1)];
           break;
         case ITEM_DRILL3:
-          bg = bg_cell_drill[3];
+          bg = bg_cell_drill[3 + ((ui.frame_counter & 6) << 1)];
           break;
 
         case ITEM_ASSEMBLER:
-          bg = bg_cell_assembler[0];
+          bg = bg_cell_assembler[0 + ((ui.frame_counter & 6) << 1)];
           break;
         case ITEM_ASSEMBLER1:
-          bg = bg_cell_assembler[1];
+          bg = bg_cell_assembler[1 + ((ui.frame_counter & 6) << 1)];
           break;
         case ITEM_ASSEMBLER2:
-          bg = bg_cell_assembler[2];
+          bg = bg_cell_assembler[2 + ((ui.frame_counter & 6) << 1)];
           break;
         case ITEM_ASSEMBLER3:
-          bg = bg_cell_assembler[3];
+          bg = bg_cell_assembler[3 + ((ui.frame_counter & 6) << 1)];
           break;
 
         case ITEM_FURNACE:
-          bg = bg_cell_furnace[0];
+          bg = bg_cell_furnace[0 + ((ui.frame_counter & 4) << 0)];
           break;
         case ITEM_FURNACE1:
-          bg = bg_cell_furnace[1];
+          bg = bg_cell_furnace[1 + ((ui.frame_counter & 4) << 0)];
           break;
         case ITEM_FURNACE2:
-          bg = bg_cell_furnace[2];
+          bg = bg_cell_furnace[2 + ((ui.frame_counter & 4) << 0)];
           break;
         case ITEM_FURNACE3:
-          bg = bg_cell_furnace[3];
+          bg = bg_cell_furnace[3 + ((ui.frame_counter & 4) << 0)];
           break;
 
         case ITEM_LAB:
-          bg = bg_cell_lab[0];
+          bg = bg_cell_lab[0 + ((ui.frame_counter & 14) << 1)];
           break;
         case ITEM_LAB1:
-          bg = bg_cell_lab[1];
+          bg = bg_cell_lab[1 + ((ui.frame_counter & 14) << 1)];
           break;
         case ITEM_LAB2:
-          bg = bg_cell_lab[2];
+          bg = bg_cell_lab[2 + ((ui.frame_counter & 14) << 1)];
           break;
         case ITEM_LAB3:
-          bg = bg_cell_lab[3];
+          bg = bg_cell_lab[3 + ((ui.frame_counter & 14) << 1)];
           break;
           
         case ITEM_ID_COUNT:
@@ -477,6 +506,22 @@ void render_level() {
       }
 
       lcd_draw_bg(bg, x, y);
+    }
+  }
+
+  for (uint16_t cell_x = cell_left; cell_x <= cell_right; cell_x++) {
+    for (uint16_t cell_y = cell_top; cell_y <= cell_bottom; cell_y++) {
+      int8_t x = (cell_x * 8) - camera_x;
+      int8_t y = (cell_y * 7) - camera_y;
+
+      cell_t cell = game.level[cell_y][cell_x];
+
+      if (cell.id == ITEM_CONVEYOR || cell.id == ITEM_SWITCHER || cell.id == ITEM_SPLITTER) {
+        uint8_t item_id = (cell.data >> 2) & 0b11111;
+        if (item_id != ITEM_NONE) {
+          render_item(item_id, x, y-2);
+        }
+      }
     }
   }
 

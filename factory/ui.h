@@ -47,6 +47,7 @@ typedef struct {
   int16_t placing_x;
   int16_t placing_y;
   uint8_t placing_blocked;
+  uint16_t placing_data;
 
   uint8_t level_subtick;
 

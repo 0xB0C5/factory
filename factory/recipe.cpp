@@ -18,6 +18,12 @@ static const recipe_t recipe_array[] = {
     ITEM_CONVEYOR, 16, 2, {{ITEM_COG, 1}, {ITEM_IRON_PLATE, 1}},
   },
   {
+    ITEM_SWITCHER, 32, 1, {{ITEM_IRON_PLATE, 4}, {ITEM_CONVEYOR, 2}},
+  },
+  {
+    ITEM_SPLITTER, 32, 1, {{ITEM_CIRCUIT, 5}, {ITEM_IRON_PLATE, 5}, {ITEM_CONVEYOR, 4}},
+  },
+  {
     ITEM_FURNACE, 32, 1, {{ITEM_ROCK, 5}},
   },
   {

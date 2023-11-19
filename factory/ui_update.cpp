@@ -125,8 +125,23 @@ void ui_select_inventory_item() {
         ui.placing_y--;
       }
 
+      ui.placing_data = 0;
+
       ui.state = UI_STATE_LEVEL;
       break;
+
+    case ITEM_CONVEYOR:
+    case ITEM_SWITCHER:
+    case ITEM_SPLITTER:
+      ui.placing_item = id;
+      ui.placing_item_size = 1;
+      ui.placing_x = game.player.x + ui.player_facing.x;
+      ui.placing_y = game.player.y + ui.player_facing.y;
+      ui.placing_data = 0;
+      
+      ui.state = UI_STATE_LEVEL;
+      break;
+
     default:
       break;
   }
@@ -532,6 +547,24 @@ void ui_update_action() {
           }
           ui.action_progress = 0;
         }
+        break;
+
+      case ITEM_CONVEYOR:
+      case ITEM_SWITCHER:
+      case ITEM_SPLITTER:
+        {
+          if (ui_try_add_player_inventory(cell->id)) {
+            uint8_t item_id = (cell->data >> 2) & 0b11111;
+            if (item_id != ITEM_NONE) {
+              ui_try_add_player_inventory(item_id);
+            }
+            
+            cell_t blank = {0, 0};
+            *cell = blank;
+          }
+          ui.action_progress = 0;
+        }
+        break;
 
       default:
         // Not an actionable tile.
@@ -544,25 +577,44 @@ void ui_update_action() {
 void ui_update_level() {
   bool is_player_aligned = ui.player_subcell.x == 0 && ui.player_subcell.y == 0;
   if (is_player_aligned && ui.input_pressed & INPUT_B) {
-    ui.state = UI_STATE_INVENTORY;
-    ui.placing_item = ITEM_NONE;
-    ui.menu_tab_selected = false;
+    if (ui.placing_item != ITEM_NONE) {
+      ui.placing_item = ITEM_NONE;
+    } else {
+      ui.state = UI_STATE_INVENTORY;
+      ui.menu_tab_selected = false;
+    }
     return;
   }
 
   if (ui.placing_item != ITEM_NONE) {
-    if (ui.input_pressed & INPUT_UP) {
-      ui.placing_y--;
+    if ((ui.input & INPUT_A) && ui.placing_item == ITEM_CONVEYOR) {
+      if (ui.input_pressed & INPUT_UP) {
+        ui.placing_data = DIRECTION_UP;
+      }
+      if (ui.input_pressed & INPUT_DOWN) {
+        ui.placing_data = DIRECTION_DOWN;
+      }
+      if (ui.input_pressed & INPUT_LEFT) {
+        ui.placing_data = DIRECTION_LEFT;
+      }
+      if (ui.input_pressed & INPUT_RIGHT) {
+        ui.placing_data = DIRECTION_RIGHT;
+      }
+    } else {
+      if (ui.input_pressed & INPUT_UP) {
+        ui.placing_y--;
+      }
+      if (ui.input_pressed & INPUT_DOWN) {
+        ui.placing_y++;
+      }
+      if (ui.input_pressed & INPUT_LEFT) {
+        ui.placing_x--;
+      }
+      if (ui.input_pressed & INPUT_RIGHT) {
+        ui.placing_x++;
+      }
     }
-    if (ui.input_pressed & INPUT_DOWN) {
-      ui.placing_y++;
-    }
-    if (ui.input_pressed & INPUT_LEFT) {
-      ui.placing_x--;
-    }
-    if (ui.input_pressed & INPUT_RIGHT) {
-      ui.placing_x++;
-    }
+    
     uint16_t max_placing_x = game.player.x + 5 - ui.placing_item_size;
     uint16_t min_placing_x = game.player.x - 4;
     if (ui.placing_x > max_placing_x) {
@@ -603,56 +655,62 @@ void ui_update_level() {
       }
     }
 
-    if (ui.placing_blocked == 0 && ui.input_pressed & INPUT_A) {
+    if (ui.placing_blocked == 0 && ui.input_released & INPUT_A) {
       uint8_t id = ui.placing_item;
-      ui.placing_item = ITEM_NONE;
 
       inventory_item_t *item = &game.player.inventory[ui.inventory_cursor];
       if (item->id != id || item->count == 0) return;
       item->count--;
       if (item->count == 0) {
         item->id = 0;
+        ui.placing_item = ITEM_NONE;
       }
 
       // Place the item!
-      cell_t cell0 = {id, 0};
-      cell_t cell1 = {(uint8_t)(id+1), 0};
-      cell_t cell2 = {(uint8_t)(id+2), 0};
-      cell_t cell3 = {(uint8_t)(id+3), 0};
-
-      if (id == ITEM_DRILL) {
-        uint8_t resource_id = ITEM_NONE;
-        int16_t resource_count = 0;
-        // Set the drill's resource count.
-        for (int dy = 0; dy < 2; dy++) {
-          for (int dx = 0; dx < 2; dx++) {
-            cell_t existing_cell = game.level[ui.placing_y+dy][ui.placing_x+dx];
-            switch (existing_cell.id) {
-              case ITEM_COAL:
-              case ITEM_ROCK:
-              case ITEM_IRON:
-              case ITEM_COPPER:
-                resource_id = existing_cell.id;
-                resource_count += existing_cell.data;
-                break;
-              default:
-                break;
+      if (ui.placing_item_size == 2) {
+        cell_t cell0 = {id, 0};
+        cell_t cell1 = {(uint8_t)(id+1), 0};
+        cell_t cell2 = {(uint8_t)(id+2), 0};
+        cell_t cell3 = {(uint8_t)(id+3), 0};
+  
+        if (id == ITEM_DRILL) {
+          uint8_t resource_id = ITEM_NONE;
+          int16_t resource_count = 0;
+          // Set the drill's resource count.
+          for (int dy = 0; dy < 2; dy++) {
+            for (int dx = 0; dx < 2; dx++) {
+              cell_t existing_cell = game.level[ui.placing_y+dy][ui.placing_x+dx];
+              switch (existing_cell.id) {
+                case ITEM_COAL:
+                case ITEM_ROCK:
+                case ITEM_IRON:
+                case ITEM_COPPER:
+                  resource_id = existing_cell.id;
+                  resource_count += existing_cell.data;
+                  break;
+                default:
+                  break;
+              }
             }
           }
+  
+          if (resource_count > 2047) {
+            resource_count = 2047;
+          }
+  
+          cell2.data = resource_id;
+          cell3.data = resource_count;
         }
-
-        if (resource_count > 2047) {
-          resource_count = 2047;
-        }
-
-        cell2.data = resource_id;
-        cell3.data = resource_count;
+  
+        game.level[ui.placing_y][ui.placing_x] = cell0;
+        game.level[ui.placing_y][ui.placing_x+1] = cell1;
+        game.level[ui.placing_y+1][ui.placing_x] = cell2;
+        game.level[ui.placing_y+1][ui.placing_x+1] = cell3;
+      } else {
+        // size = 1
+        cell_t cell = {id, ui.placing_data};
+        game.level[ui.placing_y][ui.placing_x] = cell;
       }
-
-      game.level[ui.placing_y][ui.placing_x] = cell0;
-      game.level[ui.placing_y][ui.placing_x+1] = cell1;
-      game.level[ui.placing_y+1][ui.placing_x] = cell2;
-      game.level[ui.placing_y+1][ui.placing_x+1] = cell3;
     }
     return;
   }
@@ -700,7 +758,7 @@ void ui_update_level() {
       case ITEM_IRON:
       case ITEM_COPPER:
       case ITEM_CONVEYOR:
-      case ITEM_GRABBER:
+      case ITEM_SPLITTER:
       case ITEM_SWITCHER:
         break;
       default:

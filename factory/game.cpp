@@ -312,9 +312,132 @@ bool machine_craft_recipe(recipe_t *recipe, machine_inventory_t *inventory) {
   return true;
 }
 
+
+bool dump_to_conveyor(int x, int y, uint8_t direction, uint8_t id) {
+  cell_t *cell = &game.level[y][x];
+  if (cell->id != ITEM_CONVEYOR) return false;
+  uint16_t data = cell->data;
+  uint8_t conveyor_direction = data & 3;
+  if (conveyor_direction != direction) return false;
+  uint8_t conveyor_id = (data >> 2) & 0b11111;
+  if (conveyor_id != ITEM_NONE) return false;
+  cell->data = (id << 2) | conveyor_direction;
+  return true;
+}
+
+bool attempt_machine_dump(inventory_item_t *item, int x, int y) {
+  uint8_t id = item->id;
+  bool dumped = (
+    dump_to_conveyor(x, y-1, DIRECTION_UP, id)
+    || dump_to_conveyor(x+1, y-1, DIRECTION_UP, id)
+    
+    || dump_to_conveyor(x, y+2, DIRECTION_DOWN, id)
+    || dump_to_conveyor(x+1, y+2, DIRECTION_DOWN, id)
+
+    || dump_to_conveyor(x-1, y, DIRECTION_LEFT, id)
+    || dump_to_conveyor(x-1, y+1, DIRECTION_LEFT, id)
+
+    || dump_to_conveyor(x+2, y, DIRECTION_RIGHT, id)
+    || dump_to_conveyor(x+2, y+1, DIRECTION_RIGHT, id)
+  );
+
+  if (dumped) {
+    item->count--;
+    if (item->count == 0) {
+      item->id = ITEM_NONE;
+    }
+  }
+
+  return dumped;
+}
+
+uint8_t grab_any_from_conveyor(int x, int y, uint8_t direction) {
+  cell_t *cell = &game.level[y][x];
+  if (cell->id != ITEM_CONVEYOR) return false;
+  uint16_t data = cell->data;
+  uint8_t conveyor_direction = data & 3;
+  if (conveyor_direction != direction) return false;
+  uint8_t conveyor_id = (data >> 2) & 0b11111;
+  if (conveyor_id == ITEM_NONE) return false;
+  cell->data = data & 3;
+  return conveyor_id;
+}
+
+bool grab_from_conveyor(machine_inventory_t *inventory, int x, int y, uint8_t direction) {
+  cell_t *cell = &game.level[y][x];
+  if (cell->id != ITEM_CONVEYOR) return false;
+  uint16_t data = cell->data;
+  uint8_t conveyor_direction = data & 3;
+  if (conveyor_direction != direction) return false;
+  uint8_t conveyor_id = (data >> 2) & 0b11111;
+  if (conveyor_id == ITEM_NONE) return false;
+
+  for (int i = 0; i < inventory->slot_count; i++) {
+    if (inventory->items[i].id == conveyor_id) {
+      if (inventory->items[i].count + 1 < inventory->slot_capacity) {
+        inventory->items[i].count++;
+        cell->data = data & 3;
+        return true;
+      } else {
+        // machine has enough of the item.
+        return false;
+      }
+    }
+  }
+
+  // Item not found. Check for empty slot.
+  for (int i = 0; i < inventory->slot_count; i++) {
+    if (inventory->items[i].id == ITEM_NONE) {
+      inventory->items[i].id = conveyor_id;
+      inventory->items[i].count = 1;
+      cell->data = data & 3;
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool attempt_machine_grab(machine_inventory_t *inventory, int x, int y) {
+  bool changed = 0;
+
+  changed |= grab_from_conveyor(inventory, x, y-1, DIRECTION_DOWN);
+  changed |= grab_from_conveyor(inventory, x+1, y-1, DIRECTION_DOWN);
+    
+  changed |= grab_from_conveyor(inventory, x, y+2, DIRECTION_UP);
+  changed |= grab_from_conveyor(inventory, x+1, y+2, DIRECTION_UP);
+
+  changed |= grab_from_conveyor(inventory, x-1, y, DIRECTION_RIGHT);
+  changed |= grab_from_conveyor(inventory, x-1, y+1, DIRECTION_RIGHT);
+
+  changed |= grab_from_conveyor(inventory, x+2, y, DIRECTION_LEFT);
+  changed |= grab_from_conveyor(inventory, x+2, y+1, DIRECTION_LEFT);
+
+  return changed;
+}
+
+
 void update_furnace(int x, int y) {
   machine_inventory_t inventory;
   if (!load_machine_inventory(&inventory, x, y)) return;
+
+  bool changed = false;
+  for (int i = 0; i < inventory.slot_count; i++) {
+    if (inventory.items[i].id == ITEM_IRON_PLATE || inventory.items[i].id == ITEM_COPPER_PLATE) {
+      if (attempt_machine_dump(&inventory.items[i], x, y)) {
+        changed = true;
+      }
+      break;
+    }
+  }
+
+  if (attempt_machine_grab(&inventory, x, y)) {
+    changed = true;
+  }
+
+  if (changed) {
+    store_machine_inventory(&inventory, x, y);
+  }
 
   uint16_t burn_remainder = game.level[y+1][x+1].data;
   if (burn_remainder) {
@@ -393,6 +516,24 @@ void update_drill(int x, int y) {
     game.level[y+1][x].data = (burn_remainder << 5) | resource_id;
   }
 
+  bool changed = false;
+  for (int i = 0; i < inventory.slot_count; i++) {
+    if (inventory.items[i].id == resource_id) {
+      if (attempt_machine_dump(&inventory.items[i], x, y)) {
+        changed = true;
+      }
+      break;
+    }
+  }
+
+  if (attempt_machine_grab(&inventory, x, y)) {
+    changed = true;
+  }
+
+  if (changed) {
+    store_machine_inventory(&inventory, x, y);
+  }
+
   if (game.level[y+1][x+1].data == 0) return; // Nothing to mine!
 
   int coal_index = -1;
@@ -439,6 +580,10 @@ void update_lab(int x, int y) {
   machine_inventory_t inventory;
   if (!load_machine_inventory(&inventory, x, y)) return;
 
+  if (attempt_machine_grab(&inventory, x, y)) {
+    store_machine_inventory(&inventory, x, y);
+  }
+
   for (int i = 0; i < inventory.slot_count; i++) {
     if (inventory.items[i].id == ITEM_SCIENCE) {
       inventory.items[i].count--;
@@ -465,6 +610,25 @@ void update_assembler(int x, int y) {
   }
 
   const recipe_t *recipe = &recipes[recipe_index];
+
+  // Check if we can dump the output onto adjacent conveyors.
+  bool changed = false;
+  for (int i = 0; i < inventory.slot_count; i++) {
+    if (inventory.items[i].id == recipe->result) {
+      if (attempt_machine_dump(&inventory.items[i], x, y)) {
+        changed = true;
+      }
+      break;
+    }
+  }
+
+  if (attempt_machine_grab(&inventory, x, y)) {
+    changed = true;
+  }
+
+  if (changed) {
+    store_machine_inventory(&inventory, x, y);
+  }
 
   // Remove the items for the recipe.
   for (int i = 0; i < 4; i++) {
@@ -517,7 +681,7 @@ void update_assembler(int x, int y) {
   }
 
   // Can do the recipe!
-  uint8_t progress = (((d3 >> 5) & 0b11111) + 1) << 4;
+  uint8_t progress = (((d3 >> 5) & 0b11111) + 1) << 3;
   if (progress >= recipe->time) {
     progress = 0;
     inventory.items[output_index].count += recipe->yield;
@@ -526,7 +690,147 @@ void update_assembler(int x, int y) {
   }
 
   // In progress, progress, recipe index
-  game.level[y+1][x+1].data = 0b10000000000 | (progress << 1) | (recipe_index + 1);
+  game.level[y+1][x+1].data = 0b10000000000 | (progress << 2) | (recipe_index + 1);
+}
+
+void update_conveyor(int x, int y) {
+  cell_t cell = game.level[y][x];
+
+  uint8_t item_id = (cell.data >> 2) & 0b11111;
+  if (item_id == ITEM_NONE) return;
+
+  int next_x = x;
+  int next_y = y;
+  switch (cell.data & 3) {
+    case DIRECTION_UP:
+      next_y--;
+      break;
+    case DIRECTION_DOWN:
+      next_y++;
+      break;
+    case DIRECTION_LEFT:
+      next_x--;
+      break;
+    case DIRECTION_RIGHT:
+      next_x++;
+      break;
+  }
+
+  cell_t next = game.level[next_y][next_x];
+  if (next.id != ITEM_CONVEYOR) return;
+
+  uint8_t next_item = (next.data >> 2);
+  if (next_item != ITEM_NONE) return;
+
+  next.data = (item_id << 2) | (next.data & 3);
+  cell.data = cell.data & 3;
+  game.level[y][x] = cell;
+  game.level[next_y][next_x] = next;
+}
+
+void update_switcher(int x, int y) {
+  cell_t cell = game.level[y][x];
+  uint8_t item_id = (cell.data >> 2) & 0b11111;
+  if (item_id != ITEM_NONE) {
+    // update as if it was a conveyor to dump its item.
+    update_conveyor(x, y);
+    cell = game.level[y][x];
+    item_id = (cell.data >> 2) & 0b11111;
+  }
+
+  if (item_id != ITEM_NONE) {
+    return;
+  }
+
+  uint8_t direction = cell.data & 3;
+  for (int i = 0; i < 4; i++) {
+    // Rotate
+    direction = (direction + 1) & 3;
+
+    int prev_x = x;
+    int prev_y = y;
+    int next_x = x;
+    int next_y = y;
+    switch (direction) {
+      case DIRECTION_UP:
+        prev_y++;
+        next_y--;
+        break;
+      case DIRECTION_DOWN:
+        prev_y--;
+        next_y++;
+        break;
+      case DIRECTION_LEFT:
+        prev_x++;
+        next_x--;
+        break;
+      case DIRECTION_RIGHT:
+        prev_x--;
+        next_x++;
+        break;
+    }
+
+    // Check that next can take an item.
+    cell_t next_cell = game.level[next_y][next_x];
+    if (next_cell.id != ITEM_CONVEYOR) continue;
+    uint8_t next_direction = next_cell.data & 3;
+    uint8_t next_item = (next_cell.data >> 2) & 0b11111;
+
+    if (next_direction != direction) continue;
+    if (next_item != ITEM_NONE) continue;
+
+    item_id = grab_any_from_conveyor(prev_x, prev_y, direction);
+
+    if (item_id != ITEM_NONE) break;
+  }
+
+  game.level[y][x].data = (item_id << 2) | direction;
+}
+
+void update_splitter(int x, int y) {
+  cell_t cell = game.level[y][x];
+  uint8_t direction = cell.data & 3;
+  uint8_t item_id = (cell.data >> 2) & 0b11111;
+  if (item_id != ITEM_NONE) {
+    bool dumped = false;
+    for (int i = 0; i < 4; i++) {
+      // Rotate
+      direction = (direction + 1) & 3;
+
+      int next_x = x;
+      int next_y = y;
+      switch (direction) {
+        case DIRECTION_UP:
+          next_y--;
+          break;
+        case DIRECTION_DOWN:
+          next_y++;
+          break;
+        case DIRECTION_LEFT:
+          next_x--;
+          break;
+        case DIRECTION_RIGHT:
+          next_x++;
+          break;
+      }
+
+      if (dump_to_conveyor(next_x, next_y, direction, item_id)) {
+        dumped = true;
+        break;
+      }
+    }
+
+    if (dumped) {
+      item_id = ITEM_NONE;
+    }
+  }
+
+  if (item_id == ITEM_NONE) item_id = grab_any_from_conveyor(x, y-1, DIRECTION_DOWN);
+  if (item_id == ITEM_NONE) item_id = grab_any_from_conveyor(x, y+1, DIRECTION_UP);
+  if (item_id == ITEM_NONE) item_id = grab_any_from_conveyor(x-1, y, DIRECTION_RIGHT);
+  if (item_id == ITEM_NONE) item_id = grab_any_from_conveyor(x+1, y, DIRECTION_LEFT);
+
+  game.level[y][x].data = (item_id << 2) | direction;
 }
 
 void level_update(uint8_t subtick) {
@@ -538,6 +842,22 @@ void level_update(uint8_t subtick) {
   for (int y = subtick; y < LEVEL_HEIGHT_CELLS; y += LEVEL_SUBTICKS - 1) {
     for (int x = 0; x < LEVEL_WIDTH_CELLS; x++) {
       switch (game.level[y][x].id) {
+        case ITEM_CONVEYOR:
+          // Conveyors update every 2 ticks,
+          // in a checkerboard pattern.
+          if ((x ^ y ^ game.tick_counter) & 1) {
+            update_conveyor(x, y);
+          }
+          break;
+
+        case ITEM_SWITCHER:
+          update_switcher(x, y);
+          break;
+
+        case ITEM_SPLITTER:
+          update_splitter(x, y);
+          break;
+
         case ITEM_FURNACE:
           {
             // Furnaces update every 4 ticks.
