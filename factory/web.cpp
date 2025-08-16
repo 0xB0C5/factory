@@ -1,3 +1,4 @@
+#ifdef WEB
 #include <cstdio>
 #include <memory>
 #include "factory.h"
@@ -40,3 +41,4 @@ uint32_t consumeDelay() {
 uint32_t getSeed() {
     return seed;
 }
+#endif
