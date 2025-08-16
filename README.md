@@ -1,5 +1,5 @@
 Factory
-#######
+=======
 
 Factory is a simple factory-builder game that runs on a [Teensy 4.0](https://www.pjrc.com/store/teensy40.html)
 connected to an 84x48 pixel Nokia 5110 LCD screen and 6 buttons.
