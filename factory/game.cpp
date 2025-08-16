@@ -1,10 +1,11 @@
 #include "game.h"
-#include "Arduino.h"
-#include "LittleFS.h"
+#include "arduino_compat.h"
+#include "fs.h"
 #include "fatal_error.h"
 #include "recipe.h"
 
 #include <math.h>
+#include <memory>
 
 game_t game;
 
@@ -187,15 +188,15 @@ bool load_machine_inventory(machine_inventory_t *inventory, int16_t x, int16_t y
     case ITEM_FURNACE:
     case ITEM_ASSEMBLER:
       inventory->slot_count = 3;
-      inventory->slot_capacity = 64;
+      inventory->slot_capacity = 32;
       break;
     case ITEM_DRILL:
       inventory->slot_count = 2;
-      inventory->slot_capacity = 64;
+      inventory->slot_capacity = 32;
       break;
     case ITEM_LAB:
       inventory->slot_count = 1;
-      inventory->slot_capacity = 64;
+      inventory->slot_capacity = 32;
       break;
     default:
       return false;
@@ -207,7 +208,7 @@ bool load_machine_inventory(machine_inventory_t *inventory, int16_t x, int16_t y
     uint16_t d = game.level[y0 + (i>>1)][x0 + (i&1)].data;
     inventory_item_t item = {(uint8_t)(d & 0b11111), (uint8_t)(d >> 5)};
     if (item.id != ITEM_NONE && item.count == 0) {
-      item.count = 64;
+      item.count = inventory->slot_capacity;
     }
     inventory->items[i] = item;
   }
@@ -231,15 +232,15 @@ bool store_machine_inventory(machine_inventory_t *inventory, int16_t x, int16_t 
     case ITEM_FURNACE:
     case ITEM_ASSEMBLER:
       if (inventory->slot_count != 3) return false;
-      if (inventory->slot_capacity != 64) return false;
+      if (inventory->slot_capacity != 32) return false;
       break;
     case ITEM_DRILL:
       if (inventory->slot_count != 2) return false;
-      if (inventory->slot_capacity != 64) return false;
+      if (inventory->slot_capacity != 32) return false;
       break;
     case ITEM_LAB:
       if (inventory->slot_count != 1) return false;
-      if (inventory->slot_capacity != 64) return false;
+      if (inventory->slot_capacity != 32) return false;
       break;
     default:
       return false;
@@ -247,7 +248,7 @@ bool store_machine_inventory(machine_inventory_t *inventory, int16_t x, int16_t 
 
   for (int i = 0; i < inventory->slot_count; i++) {
     inventory_item_t item = inventory->items[i];
-    uint16_t d = item.id | ((item.count & 0b111111) << 5);
+    uint16_t d = item.id | (item.count << 5);
     game.level[y0 + (i>>1)][x0 + (i&1)].data = d;
   }
 

@@ -6,6 +6,7 @@
 #include "lcd.h"
 #include <string.h>
 
+
 bool ui_try_add_player_inventory(uint8_t id) {
   for (int i = 0; i < PLAYER_INVENTORY_SIZE; i++) {
     inventory_item_t *item = &game.player.inventory[i];
@@ -180,12 +181,14 @@ void ui_swap_inventory_items() {
   inventory_item_t old_item1 = *item1;
 
   if (item0->id == ITEM_NONE) {
+  
     // Split item1 to item0.
     int n = item1->count / 2;
     if (n > capacity0) n = capacity0;
     item1->count -= n;
     item0->count += n;
     if (item0->count > 0) item0->id = item1->id;
+
   } else if (item0->id == item1->id || item1->id == ITEM_NONE) {
     // Move item1 to item2.
     int n = item0->count;

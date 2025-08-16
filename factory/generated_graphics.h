@@ -1,4 +1,4 @@
-#include <avr/pgmspace.h>
+#include <cstdint>
 extern const uint8_t bg_cell_assembler[16][7];
 extern const uint8_t bg_cell_auto[6][7];
 extern const uint8_t bg_cell_blank[1][7];

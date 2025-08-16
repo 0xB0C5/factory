@@ -4,6 +4,8 @@
 #include "game.h"
 #include "generated_graphics.h"
 #include "recipe.h"
+#include <cstdint>
+#include <cstddef>
 
 #define CAMERA_MAX_X (8*LEVEL_WIDTH_CELLS-LCD_WIDTH)
 #define CAMERA_MAX_Y (7*LEVEL_HEIGHT_CELLS-LCD_HEIGHT)

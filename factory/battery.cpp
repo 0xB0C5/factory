@@ -1,5 +1,6 @@
+
 #include "battery.h"
-#include "Arduino.h"
+#include "arduino_compat.h"
 
 #define PIN_BATTERY 14
 

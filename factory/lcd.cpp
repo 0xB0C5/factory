@@ -1,4 +1,5 @@
 #include "lcd.h"
+#include "arduino_compat.h"
 
 #define PIN_RESET 7
 #define PIN_SCE   6
